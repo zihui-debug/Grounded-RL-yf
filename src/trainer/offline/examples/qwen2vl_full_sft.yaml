@@ -1,0 +1,54 @@
+### model
+model_name_or_path: Qwen/Qwen2-VL-7B-Instruct
+# image_max_pixels: 4194304
+# image_min_pixels: 262144
+image_max_pixels: 4194304
+image_min_pixels: 3136
+video_max_pixels: 16384
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: full
+deepspeed: examples/deepspeed/ds_z3_config.json
+
+### dataset
+dataset: ical_human_in_the_loop
+template: qwen2_vl
+# cutoff_len: 8192
+cutoff_len: 8192
+flash_attn: fa2
+overwrite_cache: false
+dataloader_pin_memory: true
+save_only_model: true
+dataloader_num_workers: 0
+seed: 0
+
+### output
+output_dir: ~/checkpoints/qwen2-vl-7b_full_sft_ical/
+logging_steps: 1
+save_steps: 100
+plot_loss: true
+overwrite_output_dir: true
+report_to: wandb
+
+### train
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 1
+learning_rate: 2.5e-6
+weight_decay: 0.01
+num_train_epochs: 30.0
+freeze_vision_tower: true
+lr_scheduler_type: cosine
+warmup_ratio: 0.03
+bf16: true
+bf16_full_eval: true
+ddp_timeout: 180000000
+
+### eval
+eval_dataset: uground_MCTS_chains_SFT_val_answer_only
+# val_size: 0.1
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 250

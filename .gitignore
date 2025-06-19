@@ -1,0 +1,24 @@
+# Python artifacts
+*.pyc
+__pycache__/
+
+# Logs and outputs
+*.txt
+*.log
+*.out
+
+# JSON and compressed variants
+*.json
+*.jsonl
+*.jsonl.gz
+*.jsonl.gz.part
+*.jsonl.gz.part.1
+*.jsonl.gz.part.2
+
+# Wandb and Slurm
+wandb/
+slurm/
+
+# Data and checkpoints
+data/
+checkpoints/
