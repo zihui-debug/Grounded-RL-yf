@@ -5,7 +5,7 @@ This repository contains the official code implementation for the paper:
 > **Grounded Reinforcement Learning for Visual Reasoning**
 > Gabriel Sarch, Snigdha Saha, Naitik Khandelwal, Ayush Jain, Michael J. Tarr, Aviral Kumar, Katerina Fragkiadaki
 
-[**Paper**](https://arxiv.org/abs/2505.23678) | [**Datasets**](https://huggingface.co/datasets/gsarch/vigorl_datasets) | [**Models**](https://huggingface.co/gsarch)
+[**Paper**](https://arxiv.org/abs/2505.23678) | [**Datasets**](https://huggingface.co/datasets/gsarch/vigorl_datasets) | [**Models**](https://huggingface.co/collections/gsarch/vigorl-6855655677fd6ff5864f65f2) | [**Project Page**](https://visually-grounded-rl.github.io/)
 
 ---
 
