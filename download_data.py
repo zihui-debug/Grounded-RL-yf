@@ -31,7 +31,7 @@ print(f"✅ DATA_ROOT is set to: {DATA_ROOT}")
 # -----------------------------------------------------------------------------
 # 2️⃣ Download the entire dataset snapshot (counts as a HF dataset download)
 # -----------------------------------------------------------------------------
-print("\n🔄 Downloading dataset snapshot (this will increment your HF dataset download count)...")
+print("\n🔄 Downloading dataset snapshot...")
 snapshot_download(
     repo_id="gsarch/vigorl_datasets",
     repo_type="dataset",
