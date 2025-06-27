@@ -446,7 +446,7 @@ class MonteCarloTreeSearch:
             # Generate the next text chunk
             next_text = self.llm.generate_single_thought(
                 system_prompt=system_prompt,
-                previous_thoughts=[(txt, None) for txt in ephemeral_texts],
+                previous_thoughts=previous_thoughts,
                 force_final=force_final
             )
 
@@ -463,6 +463,7 @@ class MonteCarloTreeSearch:
 
             # Append to ephemeral text, increment counters
             ephemeral_texts.append(next_text)
+            previous_thoughts.append((next_text, None))
             ephemeral_depth += 1
             depth += 1
 
