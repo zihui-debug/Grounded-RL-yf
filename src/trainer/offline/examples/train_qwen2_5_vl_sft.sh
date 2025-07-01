@@ -1,8 +1,8 @@
 # replace with the names of the datasets for train/val as logged in data/dataset_info.json
 DATASET="osatlas_train_MCTS_linearized_chains" # sat2_train_MCTS_linearized_chains
 EVAL_DATASET="osatlas_val_MCTS_linearized_chains" # sat2_val_MCTS_linearized_chains
-OUTPUT_DIR=$DATA_ROOT/checkpoints/sft
-IMAGE_DIR=$DATA_ROOT
+OUTPUT_DIR="$DATA_ROOT/checkpoints/sft"
+IMAGE_DIR="$DATA_ROOT"
 DEFAULT_CONFIG_PATH="examples/qwen2vl_full_sft.yaml"
 
 LR=(1e-6)

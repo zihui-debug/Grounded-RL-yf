@@ -71,7 +71,7 @@ conda activate grounded-rl
 pip install uv
 uv pip install -e .
 uv pip install flash-attn --no-build-isolation
-uv pip install deepspeed
+uv pip install deepspeed<=0.16.9
 
 # RL dependencies
 cd src/trainer/rl
