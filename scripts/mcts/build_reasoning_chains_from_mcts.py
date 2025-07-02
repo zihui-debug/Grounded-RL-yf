@@ -25,13 +25,9 @@ def process_text_chain(chain: List[str]) -> (str, str):
     if chain and (chain[0].startswith("<image>") or chain[0].endswith("<image>")):
         chain = chain[1:]
 
-    # final_answer = ""
-    # if chain and chain[-1].startswith("<answer>"):
     final_answer = chain[-1]
     final_answer = final_answer.replace("<answer>", "").replace("</answer>", "").strip()
     chain = chain[:-1]
-    # else:
-    #     import ipdb; ipdb.set_trace()
 
     # Remove any <think>, </think>, etc. from the lines
     cleaned = []
@@ -187,9 +183,7 @@ if __name__ == "__main__":
     # - for each chain, we create a separate SFT entry
     all_chains_text = []
     sft_entries_train = []
-    sft_entries_train_answer_only = []
     sft_entries_val = []
-    sft_entries_val_answer_only = []
     all_images_processed = set()
     chain_global_id = 0
     correct_count = 0
@@ -204,6 +198,11 @@ if __name__ == "__main__":
             if not line:
                 continue
             data_json = json.loads(line)
+
+        error = data_json.get("error", "")
+        if error:
+            print(f"error processing {data_file}: {error}")
+            continue
 
         question = data_json.get("question", "")
         image = data_json.get("image", "")
@@ -222,9 +221,6 @@ if __name__ == "__main__":
             # We'll store in a text file
             all_chains_text.append(c)
 
-            # if not image:
-            #     import ipdb; ipdb.set_trace()
-
             # check if more than 1 "<image>" in question
             if c.count("<image>") > 0:
                 # remove all "<image>" tags
@@ -237,7 +233,6 @@ if __name__ == "__main__":
             #       {"role": "assistant", "content": c}
             #   ]
             #   "images": [image]
-            sft_answer_only = c.split("<answer>")[1].split("</answer>")[0].strip()
             chain_entry = {
                 "id": f"{i}_{chain_global_id}",
                 "metadata": {},
@@ -258,25 +253,13 @@ if __name__ == "__main__":
                 "images": [image],
                 "gt_answer": true_answer,
             }
-            chain_entry_answer_only = {
-                "id": f"{i}_{chain_global_id}",
-                "metadata": {},
-                "messages": [
-                    {"role": "system", "content": system_prompt_answer_only},
-                    {"role": "user",   "content": question},
-                    {"role": "assistant", "content": true_answer}
-                ],
-                "images": [image],
-            }
             if data_file in train_files:
                 sft_entries_train.append(chain_entry)
                 if image not in all_images_processed:
-                    sft_entries_train_answer_only.append(chain_entry_answer_only)
                     all_images_processed.add(image)
             else:
                 sft_entries_val.append(chain_entry)
                 if image not in all_images_processed:
-                    sft_entries_val_answer_only.append(chain_entry_answer_only)
                     all_images_processed.add(image)
             chain_global_id += 1
         
@@ -301,16 +284,10 @@ if __name__ == "__main__":
             f.write(ch + sep)
     print(f"Wrote {len(all_chains_text)} total chains to {txt_path}")
 
-    # # 3) Train/Val split at the chain level
-    # random.shuffle(sft_entries)
-    # val_count = int(len(sft_entries) * val_size)
-    # val_entries = sft_entries[:val_count]
-    # train_entries = sft_entries[val_count:]
+    # 3) Train/Val split at the chain level has been done during processing
 
     train_json_path = os.path.join(out_dir, "reasoning_chains_train.json")
     val_json_path = os.path.join(out_dir, "reasoning_chains_val.json")
-    train_json_path_answer_only = os.path.join(out_dir, "reasoning_chains_train_answer_only.json")
-    val_json_path_answer_only = os.path.join(out_dir, "reasoning_chains_val_answer_only.json")
 
     with open(train_json_path, "w", encoding="utf-8") as f:
         json.dump(sft_entries_train, f, indent=2)
@@ -319,14 +296,6 @@ if __name__ == "__main__":
     with open(val_json_path, "w", encoding="utf-8") as f:
         json.dump(sft_entries_val, f, indent=2)
     print(f"Saved val SFT data to: {val_json_path}  (count={len(sft_entries_val)})")
-
-    with open(train_json_path_answer_only, "w", encoding="utf-8") as f:
-        json.dump(sft_entries_train_answer_only, f, indent=2)
-    print(f"Saved train SFT data to: {train_json_path_answer_only}  (count={len(sft_entries_train_answer_only)})")
-
-    with open(val_json_path_answer_only, "w", encoding="utf-8") as f:
-        json.dump(sft_entries_val_answer_only, f, indent=2)
-    print(f"Saved val SFT data to: {val_json_path_answer_only}  (count={len(sft_entries_val_answer_only)})")
 
     # 4) (Optional) Log to W&B
     if log_to_wandb:
