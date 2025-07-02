@@ -218,6 +218,18 @@ bash scripts/evaluation/eval_web_grounding.sh
 
 ---
 
+## FAQ
+
+### Q: I’m getting the error `KeyError: 'visual.patch_embed.proj.weight'`. What should I do?
+
+This error typically indicates a version mismatch between the model and the installed `transformers` library. To resolve it, downgrade your `transformers` version to:
+
+```bash
+pip install transformers==4.51.0
+```
+
+---
+
 ## Citation
 
 ```bibtex
