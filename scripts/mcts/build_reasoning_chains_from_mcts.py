@@ -25,13 +25,9 @@ def process_text_chain(chain: List[str]) -> (str, str):
     if chain and (chain[0].startswith("<image>") or chain[0].endswith("<image>")):
         chain = chain[1:]
 
-    # final_answer = ""
-    # if chain and chain[-1].startswith("<answer>"):
     final_answer = chain[-1]
     final_answer = final_answer.replace("<answer>", "").replace("</answer>", "").strip()
     chain = chain[:-1]
-    # else:
-    #     import ipdb; ipdb.set_trace()
 
     # Remove any <think>, </think>, etc. from the lines
     cleaned = []
@@ -109,10 +105,7 @@ def build_all_reasoning_for_sample(sample_json: Dict[str, Any]) -> (List[str], f
     Build all possible reasoning chains from the top-level 'tree' in sample_json.
     Returns (list_of_chains, root_node_value).
     """
-    try:
-        root_node = sample_json["tree"]
-    except:
-        import ipdb; ipdb.set_trace()
+    root_node = sample_json["tree"]
     root_node_value = root_node.get("value", 0.0)
     chains = build_reasoning_chains_from_rollouts(root_node)
     # Deduplicate if needed:
@@ -154,7 +147,6 @@ if __name__ == "__main__":
     # -----------------------------------------------------------------------
     # Adjust this as needed
     data_str = "path/to/rollouts" # TODO: change this to the path to the rollouts
-    data_str = "/home/gsarch/repo/VLM-search/data/mcts/MCTS_SALCHARTQA_72b_seed_with_fixations_20250627_171136"
     log_to_wandb = True
     prompt_type = "web_grounding" # "web_grounding", "spatial", "web_action"
 
