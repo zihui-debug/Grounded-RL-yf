@@ -71,7 +71,7 @@ conda activate grounded-rl
 pip install uv
 uv pip install -e .
 uv pip install flash-attn --no-build-isolation
-uv pip install deepspeed
+uv pip install deepspeed<=0.16.9
 
 # RL dependencies
 cd src/trainer/rl
@@ -173,7 +173,8 @@ python scripts/mcts/build_reasoning_chains_from_mcts_multiturn.py
 Add reasoning chains to `src/trainer/offline/data/dataset_info.json` and run:
 
 ```bash
-bash src/trainer/offline/examples/train_qwen2_5_vl_sft.sh
+cd src/trainer/offline
+bash examples/train_qwen2_5_vl_sft.sh
 ```
 
 ### Step 4: Reinforcement Learning (GRPO)
@@ -181,7 +182,8 @@ bash src/trainer/offline/examples/train_qwen2_5_vl_sft.sh
 Run GRPO on top of the SFT model:
 
 ```bash
-bash src/trainer/rl/examples/run_vigorl.sh
+cd src/trainer/rl
+bash examples/run_vigorl.sh
 ```
 
 Checkpoints are sharded; convert to HF format using:
@@ -212,6 +214,18 @@ bash scripts/evaluation/eval_spatial.sh
 
 ```bash
 bash scripts/evaluation/eval_web_grounding.sh
+```
+
+---
+
+## FAQ
+
+### Q: I’m getting the error `KeyError: 'visual.patch_embed.proj.weight'`. What should I do?
+
+This error typically indicates a version mismatch between the model and the installed `transformers` library. To resolve it, downgrade your `transformers` version to:
+
+```bash
+pip install transformers==4.51.0
 ```
 
 ---

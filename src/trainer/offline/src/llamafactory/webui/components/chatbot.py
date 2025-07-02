@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import json
-from typing import TYPE_CHECKING, Dict, Tuple
+from typing import TYPE_CHECKING
 
 from ...data import Role
 from ...extras.packages import is_gradio_available
@@ -31,9 +31,7 @@ if TYPE_CHECKING:
 
 
 def check_json_schema(text: str, lang: str) -> None:
-    r"""
-    Checks if the json schema is valid.
-    """
+    r"""Check if the json schema is valid."""
     try:
         tools = json.loads(text)
         if tools:
@@ -49,7 +47,7 @@ def check_json_schema(text: str, lang: str) -> None:
 
 def create_chat_box(
     engine: "Engine", visible: bool = False
-) -> Tuple["Component", "Component", Dict[str, "Component"]]:
+) -> tuple["Component", "Component", dict[str, "Component"]]:
     lang = engine.manager.get_elem_by_id("top.lang")
     with gr.Column(visible=visible) as chat_box:
         chatbot = gr.Chatbot(type="messages", show_copy_button=True)
@@ -81,6 +79,7 @@ def create_chat_box(
                 temperature = gr.Slider(minimum=0.01, maximum=1.5, value=0.95, step=0.01)
                 skip_special_tokens = gr.Checkbox(value=True)
                 escape_html = gr.Checkbox(value=True)
+                enable_thinking = gr.Checkbox(value=True)
                 clear_btn = gr.Button()
 
     tools.input(check_json_schema, inputs=[tools, engine.manager.get_elem_by_id("top.lang")])
@@ -105,6 +104,7 @@ def create_chat_box(
             temperature,
             skip_special_tokens,
             escape_html,
+            enable_thinking,
         ],
         [chatbot, messages],
     )
@@ -129,6 +129,7 @@ def create_chat_box(
             temperature=temperature,
             skip_special_tokens=skip_special_tokens,
             escape_html=escape_html,
+            enable_thinking=enable_thinking,
             clear_btn=clear_btn,
         ),
     )

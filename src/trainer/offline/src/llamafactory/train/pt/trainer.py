@@ -31,9 +31,7 @@ if TYPE_CHECKING:
 
 
 class CustomTrainer(Trainer):
-    r"""
-    Inherits Trainer for custom optimizer.
-    """
+    r"""Inherit Trainer for custom optimizer."""
 
     def __init__(
         self, finetuning_args: "FinetuningArguments", processor: Optional["ProcessorMixin"], **kwargs
@@ -42,6 +40,11 @@ class CustomTrainer(Trainer):
             kwargs["processing_class"] = kwargs.pop("tokenizer")
 
         super().__init__(**kwargs)
+        if processor is not None:
+            # avoid wrong loss under gradient accumulation
+            # https://github.com/huggingface/transformers/pull/36044#issuecomment-2746657112
+            self.model_accepts_loss_kwargs = False
+
         self.finetuning_args = finetuning_args
 
         if processor is not None:
@@ -67,8 +70,12 @@ class CustomTrainer(Trainer):
         return super().create_scheduler(num_training_steps, optimizer)
 
     @override
-    def _get_train_sampler(self) -> Optional["torch.utils.data.Sampler"]:
+    def _get_train_sampler(self, *args, **kwargs) -> Optional["torch.utils.data.Sampler"]:
         if self.finetuning_args.disable_shuffling:
             return torch.utils.data.SequentialSampler(self.train_dataset)
 
-        return super()._get_train_sampler()
+        return super()._get_train_sampler(*args, **kwargs)
+
+    @override
+    def compute_loss(self, model, inputs, *args, **kwargs):
+        return super().compute_loss(model, inputs, *args, **kwargs)

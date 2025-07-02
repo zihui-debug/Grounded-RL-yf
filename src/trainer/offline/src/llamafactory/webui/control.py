@@ -14,7 +14,7 @@
 
 import json
 import os
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from transformers.trainer_utils import get_last_checkpoint
 
@@ -39,8 +39,7 @@ if is_gradio_available():
 
 
 def can_quantize(finetuning_type: str) -> "gr.Dropdown":
-    r"""
-    Judges if the quantization is available in this finetuning type.
+    r"""Judge if the quantization is available in this finetuning type.
 
     Inputs: top.finetuning_type
     Outputs: top.quantization_bit
@@ -52,25 +51,23 @@ def can_quantize(finetuning_type: str) -> "gr.Dropdown":
 
 
 def can_quantize_to(quantization_method: str) -> "gr.Dropdown":
-    r"""
-    Gets the available quantization bits.
+    r"""Get the available quantization bits.
 
     Inputs: top.quantization_method
     Outputs: top.quantization_bit
     """
-    if quantization_method == QuantizationMethod.BITS_AND_BYTES.value:
+    if quantization_method == QuantizationMethod.BNB:
         available_bits = ["none", "8", "4"]
-    elif quantization_method == QuantizationMethod.HQQ.value:
+    elif quantization_method == QuantizationMethod.HQQ:
         available_bits = ["none", "8", "6", "5", "4", "3", "2", "1"]
-    elif quantization_method == QuantizationMethod.EETQ.value:
+    elif quantization_method == QuantizationMethod.EETQ:
         available_bits = ["none", "8"]
 
     return gr.Dropdown(choices=available_bits)
 
 
-def change_stage(training_stage: str = list(TRAINING_STAGES.keys())[0]) -> Tuple[List[str], bool]:
-    r"""
-    Modifys states after changing the training stage.
+def change_stage(training_stage: str = list(TRAINING_STAGES.keys())[0]) -> tuple[list[str], bool]:
+    r"""Modify states after changing the training stage.
 
     Inputs: train.training_stage
     Outputs: train.dataset, train.packing
@@ -78,9 +75,8 @@ def change_stage(training_stage: str = list(TRAINING_STAGES.keys())[0]) -> Tuple
     return [], TRAINING_STAGES[training_stage] == "pt"
 
 
-def get_model_info(model_name: str) -> Tuple[str, str]:
-    r"""
-    Gets the necessary information of this model.
+def get_model_info(model_name: str) -> tuple[str, str]:
+    r"""Get the necessary information of this model.
 
     Inputs: top.model_name
     Outputs: top.model_path, top.template
@@ -88,9 +84,19 @@ def get_model_info(model_name: str) -> Tuple[str, str]:
     return get_model_path(model_name), get_template(model_name)
 
 
-def get_trainer_info(lang: str, output_path: os.PathLike, do_train: bool) -> Tuple[str, "gr.Slider", Dict[str, Any]]:
-    r"""
-    Gets training infomation for monitor.
+def check_template(lang: str, template: str) -> None:
+    r"""Check if an instruct model is used.
+
+    Please use queue=True to show the warning message.
+
+    Inputs: top.lang, top.template
+    """
+    if template == "default":
+        gr.Warning(ALERTS["warn_no_instruct"][lang])
+
+
+def get_trainer_info(lang: str, output_path: os.PathLike, do_train: bool) -> tuple[str, "gr.Slider", dict[str, Any]]:
+    r"""Get training infomation for monitor.
 
     If do_train is True:
         Inputs: top.lang, train.output_path
@@ -106,11 +112,11 @@ def get_trainer_info(lang: str, output_path: os.PathLike, do_train: bool) -> Tup
     running_log_path = os.path.join(output_path, RUNNING_LOG)
     if os.path.isfile(running_log_path):
         with open(running_log_path, encoding="utf-8") as f:
-            running_log = f.read()[-20000:]  # avoid lengthy log
+            running_log = "```\n" + f.read()[-20000:] + "\n```\n"  # avoid lengthy log
 
     trainer_log_path = os.path.join(output_path, TRAINER_LOG)
     if os.path.isfile(trainer_log_path):
-        trainer_log: List[Dict[str, Any]] = []
+        trainer_log: list[dict[str, Any]] = []
         with open(trainer_log_path, encoding="utf-8") as f:
             for line in f:
                 trainer_log.append(json.loads(line))
@@ -143,8 +149,7 @@ def get_trainer_info(lang: str, output_path: os.PathLike, do_train: bool) -> Tup
 
 
 def list_checkpoints(model_name: str, finetuning_type: str) -> "gr.Dropdown":
-    r"""
-    Lists all available checkpoints.
+    r"""List all available checkpoints.
 
     Inputs: top.model_name, top.finetuning_type
     Outputs: top.checkpoint_path
@@ -166,8 +171,7 @@ def list_checkpoints(model_name: str, finetuning_type: str) -> "gr.Dropdown":
 
 
 def list_config_paths(current_time: str) -> "gr.Dropdown":
-    r"""
-    Lists all the saved configuration files.
+    r"""List all the saved configuration files.
 
     Inputs: train.current_time
     Outputs: train.config_path
@@ -182,8 +186,7 @@ def list_config_paths(current_time: str) -> "gr.Dropdown":
 
 
 def list_datasets(dataset_dir: str = None, training_stage: str = list(TRAINING_STAGES.keys())[0]) -> "gr.Dropdown":
-    r"""
-    Lists all available datasets in the dataset dir for the training stage.
+    r"""List all available datasets in the dataset dir for the training stage.
 
     Inputs: *.dataset_dir, *.training_stage
     Outputs: *.dataset
@@ -195,8 +198,7 @@ def list_datasets(dataset_dir: str = None, training_stage: str = list(TRAINING_S
 
 
 def list_output_dirs(model_name: Optional[str], finetuning_type: str, current_time: str) -> "gr.Dropdown":
-    r"""
-    Lists all the directories that can resume from.
+    r"""List all the directories that can resume from.
 
     Inputs: top.model_name, top.finetuning_type, train.current_time
     Outputs: train.output_dir
