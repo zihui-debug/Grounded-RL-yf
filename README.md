@@ -228,6 +228,14 @@ This error typically indicates a version mismatch between the model and the inst
 pip install transformers==4.51.0
 ```
 
+### Q: I'm getting the error `ImportError: .../flash_attn_2_cuda.cpython-310-x86_64-linux-gnu.so: undefined symbol: ...`. What should I do?
+
+This indicates a problem with flash attention version compilation. To resolve, compile with an alternate flash attention version:
+
+```bash
+pip install flash-attn==2.5.1.post1 --no-build-isolation
+```
+
 ---
 
 ## Citation

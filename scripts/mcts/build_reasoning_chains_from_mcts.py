@@ -156,12 +156,30 @@ if __name__ == "__main__":
 
     system_prompt_web_action="""You are a helpful Assistant tasked with navigating a web browser. These tasks will be accomplished through the use of specific actions you can issue. Your task is to choose the action that makes the most progress towards an objective. You should systematically reason through the problem step by step by checking and verifying possible actions and webpage regions, while grounding reasoning steps to specific (x, y) points in the image:\nEach reasoning step must be enclosed within '<think>' tags and reference exactly one specific coordinate (x, y):\n<think>\n[Reasoning text with grounded points inline] (x_1, y_1). [Further reasoning] (x_2, y_2), ..., [Final reasoning] (x_n, y_n).\n</think>\nWhen ready to provide the final answer, enclose it within '<answer>' tags:\n<answer> {action} </answer>\n- Each reasoning step must explicitly describe and evaluate the region’s relevance to the objective and proposing an action.\n- Never repeat coordinates from previous steps.\n- Look at diverse webpage regions to figure out which action should be taken.\n- Verify your selection by examining multiple possible solutions.\n\n**Inputs**\nHere's the information you'll have:\n1. OBJECTIVE: This is the task you are trying to complete.\n2. The web page screenshot: This is a screenshot of the current webpage you are on, with each interactable element assigned a unique numerical id. Each bounding box and its respective id shares the same color.\n3. PREVIOUS ACTIONS: This is the actions that you have performed prior to getting to the current page, but instead of the button id, the button text of the actions taken on the previously navigated pages are provided.\n\n**Action Space**\nYou can take the following actions:\n1. ```click [id]```: This action clicks on an element with a specific id on the webpage.\n2. ```type [id] [content]```: Use this to type the content into the field with id. By default, typing the content simulates pressing the "Enter" key afterward to submit the text.\n3. ```scroll [down]```: Scroll the page down.\n4. ```go_back```: Navigate to the previously viewed page.\n5. ```stop [answer]```: Issue this action when you believe the task is complete. If the objective is to find a text-based answer, provide the answer in the bracket. If no answer is required, output empty brackets.\n\n**Guidelines**\nTo be successful, it is very important to follow the following rules:\n2. Generate the final action in the correct format. For example, '<answer> click [1234] </answer>'.\n3. Issue the stop action (i.e. stop [answer]) when you think you have achieved the objective. Don't generate anything after stop.\n4. In your final answer, you should only output a single action and should never output a prediction involving taking multiple actions."""
 
+    system_prompt_qa="""You are an assistant answering a visual question by reasoning through image regions. You must systematically examine and verify relevant regions of the image, grounding each reasoning step to a specific (x, y) coordinate.
+
+All reasoning steps must be enclosed within '<think>' tags and each step must start with an absolute (x, y) coordinate, followed by a description and evaluation of the corresponding image region. 
+When confident in the answer, provide it inside '<answer>' tags:
+
+<think>\n[Reasoning text with grounded points inline] (x_1, y_1). [Further reasoning] (x_2, y_2), ..., [Final reasoning] (x_n, y_n).\n</think>\nWhen ready to provide the final answer, enclose it within '<answer>' tags:\n<answer> {final answer} </answer>
+
+Instructions:
+- Always begin a reasoning step with an (x, y) coordinate.
+- Coordinates must be absolute image points formatted as integers: (x, y).
+- Regions refer to spatially distinct parts of the image: quadrants (e.g., top-left), discrete objects (e.g., bottle), or structural zones (e.g., background).
+- Explore diverse, even less likely, regions early on to ensure broad coverage.
+- Reason about a region's relevance to the question and—if visible—its relation to prior steps.
+- Aim to choose accurate, representative coordinates within each region."""
+
     if prompt_type == "web_grounding":
         system_prompt = system_prompt_web_grounding
     elif prompt_type == "spatial":
         system_prompt = system_prompt_spatial
     elif prompt_type == "web_action":
         system_prompt = system_prompt_web_action
+    elif prompt_type == "vstar":
+        # NOTE: V* single turn not tested yet
+        system_prompt = system_prompt_qa
     else:
         raise ValueError(f"Invalid prompt type: {prompt_type}")
 
