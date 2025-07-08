@@ -348,24 +348,21 @@ def process_chain_batch(chains, max_turns, crop_resize, offset, shuffle_prob, sy
     return results
 
 def main():
-    mcts_chain_path = "/path/to/mcts/reasoning_chains/reasoning_chains_train.json" # should apply build_reasoning_chains_from_mcts.py first
-    output_parquet = "/path/to/output/parquet"
-    output_parquet_paths = "/path/to/output/parquet_w_image_paths"
-    images_folder = "/path/to/images"
-    sys_prompt = textwrap.dedent("""You are an assistant tasked with identifying precise (x,y) coordinates of a described element in an image.\nYour task involves multiple turns of reasoning, each with EXACTLY one <think> step and one action:\n- At each turn, first clearly reason about ONE area or element in the image enclosed in <think> </think> tags.\n- After reasoning, either:\n  a) Output a search action formatted precisely as:\n     <tool_call>\n     {\"name\": \"search_coordinate\", \"arguments\": {\"coordinate\": [x, y]}}\n     </tool_call>\n  b) If confident you've found the correct location, output your final answer enclosed in <answer> (x, y) </answer> tags.\n- Only answer if you are confident about the answer. If you are not confident, output a search action. You should not always end after one turn.\n- You should not repeat the same coordinates in a tool call more than once. Coordinates must be unique across tool calls, including values that are the same or nearly identical (e.g., differing by only a few pixels).""")
-    draw_dot = True
-    max_turns = 5
-    crop_resize = 512
-    offset = 100
-    shuffle_prob = 0.6
+    '''
+    Please run build_reasoning_chains_from_mcts.py first to get the single turn rollouts. Then specify path to single turn rollouts as mcts_chain_path.
+    '''
 
-    mcts_chain_path = "/path/to/mcts/reasoning_chains/reasoning_chains_train.json" # should apply build_reasoning_chains_from_mcts.py first
-    output_parquet = "/path/to/output/parquet"
-    output_parquet_paths = "/path/to/output/parquet_w_image_paths"
-    images_folder = "/path/to/images"
-    sys_prompt = textwrap.dedent("""You are a helpful assistant tasked with answering a question about an image. You should systematically reason through the problem step by step by checking and verifying relevant image regions, while grounding reasoning steps to specific (x, y) points in the image:\n- At each turn, first clearly reason about ONE area or element in the image enclosed in <think> </think> tags.\n- After reasoning, either:\n  a) Output a search action formatted precisely as:\n     <tool_call>\n     {\"name\": \"search_coordinate\", \"arguments\": {\"coordinate\": [x, y]}}\n     </tool_call>\n  b) If confident you've found the correct location, output your final answer enclosed in <answer> {final answer} </answer> tags.\n- Only answer if you are confident about the answer. If you are not confident, output a search action. You should not always end after one turn.\n- You should not repeat the same coordinates in a tool call more than once. Coordinates must be unique across tool calls, including values that are the same or nearly identical (e.g., differing by only a few pixels).\n- If unclear, infer based on likely context or purpose.\n- Your final answer should be a single word or phrase.\n- Verify each step by examining multiple possible solutions before selecting a final coordinate.""")
-    draw_dot = False
+    # Adjust this as needed
+    mcts_chain_path = "path/to/rollouts" # TODO: change this to the path to the single turn rollouts
+    prompt_type = "web_grounding" # "web_grounding", "spatial", "web_action", "vstar"
+    images_folder = "/path/to/images" # path to save training cropped images
+    output_parquet_paths = "/path/to/output/parquet_w_image_paths" # path to save the parquet file with image paths
 
+    system_prompt_web_grounding = textwrap.dedent("""You are an assistant tasked with identifying precise (x,y) coordinates of a described element in an image.\nYour task involves multiple turns of reasoning, each with EXACTLY one <think> step and one action:\n- At each turn, first clearly reason about ONE area or element in the image enclosed in <think> </think> tags.\n- After reasoning, either:\n  a) Output a search action formatted precisely as:\n     <tool_call>\n     {\"name\": \"search_coordinate\", \"arguments\": {\"coordinate\": [x, y]}}\n     </tool_call>\n  b) If confident you've found the correct location, output your final answer enclosed in <answer> (x, y) </answer> tags.\n- Only answer if you are confident about the answer. If you are not confident, output a search action. You should not always end after one turn.\n- You should not repeat the same coordinates in a tool call more than once. Coordinates must be unique across tool calls, including values that are the same or nearly identical (e.g., differing by only a few pixels).""")
+
+    sys_prompt_qa = textwrap.dedent("""You are a helpful assistant tasked with answering a question about an image. You should systematically reason through the problem step by step by checking and verifying relevant image regions, while grounding reasoning steps to specific (x, y) points in the image:\n- At each turn, first clearly reason about ONE area or element in the image enclosed in <think> </think> tags.\n- After reasoning, either:\n  a) Zoom-in on a specific region to see it better by outputting a search action formatted precisely as:\n     <tool_call>\n     {\"name\": \"search_coordinate\", \"arguments\": {\"coordinate\": [x, y]}}\n     </tool_call>\n  b) If confident you've found the correct location, output your final answer enclosed in <answer> {final answer} </answer> tags.\n- Only answer if you are confident about the answer. If you are not confident, output a search action. You should not always end after one turn.\n- You should not repeat the same coordinates in a tool call more than once. Coordinates must be unique across tool calls, including values that are the same or nearly identical (e.g., differing by only a few pixels).\n- If unclear, infer based on likely context or purpose.\n- Verify each step by examining multiple possible solutions before selecting a final answer.""")
+
+    # defaults
     max_turns = 5
     offset = 182
     crop_resize = 672
@@ -373,6 +370,21 @@ def main():
     minimum_side_length = None
     min_pixels = 2700000
     max_pixels = 2850000
+    draw_dot = False
+
+    if prompt_type == "web_grounding":
+        sys_prompt = system_prompt_web_grounding
+        draw_dot = True
+        crop_resize = 512
+        offset = 100
+    elif prompt_type == "spatial":
+        sys_prompt = sys_prompt_qa
+    elif prompt_type == "web_action":
+        sys_prompt = sys_prompt_qa
+    elif prompt_type == "vstar":
+        sys_prompt = sys_prompt_qa
+    else:
+        raise ValueError(f"Invalid prompt type: {prompt_type}")
     
     # Number of processes to use (leave some cores free)
     num_processes = max(1, multiprocessing.cpu_count() - 1)

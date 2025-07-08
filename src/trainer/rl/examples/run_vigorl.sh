@@ -63,9 +63,12 @@ elif [ "$domain" == "vstar" ]; then
         exit 1
 
     elif [ "$condition" == "vigorl" ]; then
-
-        echo "domain: $domain, condition: $condition not implemented"
-        exit 1
+    
+        # NOTE: V* single turn not tested
+        MODEL_PATH="$DATA_ROOT/checkpoints/PATH_TO_SFT_MODEL" 
+        SYSTEM_PROMPT="./examples/format_prompt/general_qa.jinja" # replace with the prompt for your dataset
+        MODEL_TAG="vigorl_qwen2_5_vl_3b_vstar"
+        REWARD_FUNCTION=./examples/reward_function/string_match_grounded_thinking.py:sat_compute_score
 
     elif [ "$condition" == "vigorl_multiturn" ]; then
 
