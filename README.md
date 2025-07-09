@@ -122,6 +122,62 @@ Pretrained ViGoRL checkpoints are available via Hugging Face:
 
 ---
 
+## Demo Scripts
+
+We provide demo scripts to run ViGoRL checkpoints interactively on a single image. Two versions are available:
+
+* `demo/demo_singleturn.py`: Run and visualize our singe-turn variant. Generates a single output of multiple grounded reasoning steps for a given image and query.
+* `demo/demo_multiturn.py`: Run and visualize our multi-turn variant. Iteratively generates reasoning steps, dynamically feeding cropped images back to the model based on model outputs until reaching a final answer.
+
+### Single-Turn Demo
+
+**Usage Example:**
+
+```bash
+# Spatial reasoning example
+python demo/demo_singleturn.py \
+    --model gsarch/ViGoRL-7b-Spatial \
+    --image demo/examples/LivingRoom.jpg \
+    --query "What is above the blue lamp?"
+
+# Web grounding example
+python demo/demo_singleturn.py \
+    --model gsarch/ViGoRL-7b-Web-Grounding \
+    --image demo/examples/APnews.png \
+    --query "Description: check sports news"
+
+# Web action example
+python demo/demo_singleturn.py \
+    --model gsarch/ViGoRL-7b-Web-Action \
+    --image demo/examples/osclass_page.png \
+    --query "OBJECTIVE: Identify the insect in the picture. Leave a comment with the title \"Questions\" and text containing the insect's identity, with the purpose of confirming with the seller.\n\nPREVIOUS ACTIONS: \n1. type  [INPUT] [] [Questions]\n\nIMAGE:\n"
+```
+
+### Multi-Turn Demo
+
+**Usage Example:**
+
+```bash
+# Visual search example
+python demo/demo_multiturn.py \
+    --model gsarch/ViGoRL-Multiturn-7b-Visual-Search \
+    --image demo/examples/man.jpg \
+    --query "What color is the man's shirt?" \
+    --crop_offset 182 \
+    --crop_size 672
+
+# Web grounding example
+python demo/demo_multiturn.py \
+    --model gsarch/ViGoRL-Multiturn-3b-Web-Grounding \
+    --image demo/examples/APnews.png \
+    --query "Description: check sports news" \
+    --draw_dot \
+    --crop_offset 100 \
+    --crop_size 512
+```
+
+---
+
 ## Repository Structure
 
 ```
