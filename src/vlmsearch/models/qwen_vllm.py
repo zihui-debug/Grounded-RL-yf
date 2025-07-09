@@ -14,7 +14,7 @@ TIMEOUT = 60
 
 client = OpenAI(
     api_key="qwen",
-    base_url="http://localhost:9001/v1",
+    base_url=f"http://localhost:{os.getenv('PORT', '9001')}/v1",
     timeout=TIMEOUT,
 )
 

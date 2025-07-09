@@ -12,6 +12,9 @@ PORT=9001 # port for vllm server
 # VLLM number of GPUs
 eval_type="vstar" # "vstar" or "web_grounding"
 
+# export port so src/vlmsearch/models/qwen_vllm.py can find the vllm server
+export PORT
+
 if [ "$eval_type" == "vstar" ]; then
 
     SYSTEM_PROMPT_VSTAR="""You are a helpful assistant tasked with answering a question about an image. You should systematically reason through the problem step by step by checking and verifying relevant image regions, while grounding reasoning steps to specific (x, y) points in the image:\n- At each turn, first clearly reason about ONE area or element in the image enclosed in <think> </think> tags.\n- After reasoning, either:\n  a) Zoom-in on a specific region to see it better by outputting a search action formatted precisely as:\n     <tool_call>\n     {\"name\": \"search_coordinate\", \"arguments\": {\"coordinate\": [x, y]}}\n     </tool_call>\n  b) If confident you've found the correct location, output your final answer enclosed in <answer> {final answer} </answer> tags.\n- Only answer if you are confident about the answer. If you are not confident, output a search action. You should not always end after one turn.\n- You should not repeat the same coordinates in a tool call more than once. Coordinates must be unique across tool calls, including values that are the same or nearly identical (e.g., differing by only a few pixels).\n- If unclear, infer based on likely context or purpose.\n- Verify each step by examining multiple possible solutions before selecting a final answer."""
