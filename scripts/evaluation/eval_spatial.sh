@@ -21,7 +21,7 @@ SYSTEM_PROMPT_GROUNDED_THINKING="""A conversation between User and Assistant. Th
 ####################
 # MODEL TO LOAD
 
-FREQUENCY_PENALTY=0.0
+REPETITION_PENALTY=1.05
 
 MODEL="Qwen/Qwen2.5-VL-3B-Instruct"
 SYSTEM_PROMPT=${SYSTEM_PROMPT_BASE_MODEL}
@@ -160,5 +160,5 @@ python -m src.vlmsearch \
     --image_root "${IMAGE_ROOT}" \
     --data_files "${DATA_FILE}" \
     --save_tag "${SAVE_TAG}" \
-    --frequency_penalty ${FREQUENCY_PENALTY} \
+    --repetition_penalty ${REPETITION_PENALTY} \
     ${args_to_add}

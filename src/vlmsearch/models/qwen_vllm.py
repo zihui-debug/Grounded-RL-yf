@@ -35,7 +35,7 @@ class Qwen_VLLM():
         final_token_begin: str = "<final>",
         final_token_end: str = "</final>",
         multicrop: bool = False,
-        frequency_penalty: float = 0.0,
+        repetition_penalty: float = 0.0,
         **kwargs,
     ):
         """
@@ -56,7 +56,7 @@ class Qwen_VLLM():
         self.final_token_begin = final_token_begin
         self.final_token_end = final_token_end
         self.multicrop = multicrop
-        self.frequency_penalty = frequency_penalty
+        self.repetition_penalty = repetition_penalty
         if examples is not None:
             with open(examples, "r") as f:
                 self.examples = json.load(f)
@@ -239,10 +239,10 @@ class Qwen_VLLM():
             max_tokens=self.max_new_tokens,
             temperature=temperature,
             top_p=self.top_p,
-            frequency_penalty=self.frequency_penalty,
             extra_body={
                 "continue_final_message": continue_final_message, 
-                "add_generation_prompt": add_generation_prompt
+                "add_generation_prompt": add_generation_prompt,
+                "repetition_penalty": self.repetition_penalty
                 }
         )
         answer = completion.choices[0].message.content
@@ -250,7 +250,6 @@ class Qwen_VLLM():
         if add_answer_begin and self.final_token_begin not in answer:
             answer = f"{self.final_token_begin}{answer}"
 
-        # print(answer)
         return answer
 
     def loglikelihood(self, requests):

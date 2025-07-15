@@ -42,7 +42,7 @@ def init_model_and_judge(args):
         pretrained=args.pretrained,
         first_rollout_no_sample=args.first_rollout_no_sample,
         multicrop=args.multicrop,
-        frequency_penalty=args.frequency_penalty,
+        repetition_penalty=args.repetition_penalty,
     )
 
     # judge
