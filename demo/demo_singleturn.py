@@ -67,7 +67,7 @@ def main() -> None:
         attn_implementation="flash_attention_2",
     )
     processor = AutoProcessor.from_pretrained(
-        args.model, max_pixels=2850000, min_pixels=3136
+        args.model, max_pixels=12960000, min_pixels=3136
     )
 
     # ----------------------------------------------------------------------- #

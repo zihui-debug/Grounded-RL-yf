@@ -15,20 +15,20 @@ export PORT
 
 SYSTEM_PROMPT_BASE_MODEL="""Identify the precise coordinates (x, y) of a specific area/element/object on the screen based on a description.\n\n- Your response should aim to point to the center or a representative point within the described area/element/object as accurately as possible.\n- If the description is unclear or ambiguous, infer the most relevant area or element based on its likely context or purpose.\n- Your answer should be a single string (x, y) corresponding to the point of interest."""
 SYSTEM_PROMPT_VANILLA_THINKING="""A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The assistant first thinks about the reasoning process in the mind and then provides the user with the answer. The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think><answer> answer here </answer>.\n\nIMPORTANT:\n\n- The Assistant must always include a <think> section first, where it reasons step by step.\n- After the <think> section, the Assistant provides the final answer inside an <answer> section.\n- Both sections are required in every response. Do not skip the <think> section.\n- The <answer> must contain only a single string in the format (x, y) with the coordinates.\n- Your task is to help the user identify the precise coordinates (x, y) of a specific area, element, or object on the screen based on a description.\n- Your response should aim to point to the center or a representative point within the described area/element/object as accurately as possible.\n- If the description is unclear or ambiguous, infer the most relevant area or element based on its likely context or purpose.\n- The final output should be the single most precise coordinate for the requested element.\n- The Assistant should verify each step and check multiple possible solutions before selecting the final answer."""
-SYSTEM_PROMPT_GROUNDED_THINKING="""A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The Assistant systematically reasons through the problem step by step, verifying each step and grounding every step to a specific point in the image.\\n\\nAll reasoning processes must be enclosed within a single set of '<think>' tags, with each reasoning step explicitly referencing a coordinate:\\n\\n<think>\\n[Reasoning text with grounded points inline] (x1, y1). [Further reasoning] (x2, y2), [Final refinement] (x3, y3).\\n</think>\\n\\nThe final answer should be enclosed in '<answer>' tags in the format:\\n<answer> (xf, yf) </answer>\\n\\nYour task is to help the user identify the precise coordinates (x, y) of a specific area/element/object on the screen based on a description.\\n- Aim to point to the center or a representative point within the described area/element/object as accurately as possible.\\n- If the description is unclear or ambiguous, infer the most relevant area or element based on its likely context or purpose.\\n- The final output should be the single most precise coordinate for the requested element.\\n- The Assistant should verify each step and check multiple possible solutions before selecting the final answer."""
+SYSTEM_PROMPT_GROUNDED_THINKING="""A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The Assistant systematically reasons through the problem step by step, verifying each step and grounding every step to a specific point in the image.\n\nAll reasoning processes must be enclosed within a single set of '<think>' tags, with each reasoning step explicitly referencing a coordinate:\n\n<think>\n[Reasoning text with grounded points inline] (x1, y1). [Further reasoning] (x2, y2), [Final refinement] (x3, y3).\n</think>\n\nThe final answer should be enclosed in '<answer>' tags in the format:\n<answer> (xf, yf) </answer>\n\nYour task is to help the user identify the precise coordinates (x, y) of a specific area/element/object on the screen based on a description.\n- Aim to point to the center or a representative point within the described area/element/object as accurately as possible.\n- If the description is unclear or ambiguous, infer the most relevant area or element based on its likely context or purpose.\n- The final output should be the single most precise coordinate for the requested element.\n- The Assistant should verify each step and check multiple possible solutions before selecting the final answer."""
 
 
 ####################
 # MODEL TO LOAD
 
-FREQUENCY_PENALTY=0.0
+REPETITION_PENALTY=1.05
 
 MODEL="Qwen/Qwen2.5-VL-3B-Instruct"
 SYSTEM_PROMPT=${SYSTEM_PROMPT_BASE_MODEL}
 YES_THINKING=false # set to true if model outputs <think> and <answer> tags
 MODEL_TAG="vigorl_qwen2_5_vl_3b_base_model"
 
-MODEL="gsarch/ViGoRL-Multiturn-3b-Web-Grounding" # gsarch/ViGoRL-Multiturn-7b-Web-Grounding
+MODEL="gsarch/ViGoRL-3b-Web-Grounding" # gsarch/ViGoRL-7b-Web-Grounding
 SYSTEM_PROMPT=${SYSTEM_PROMPT_GROUNDED_THINKING}
 YES_THINKING=true # set to true if model outputs <think> and <answer> tags
 MODEL_TAG="vigorl_qwen2_5_vl_3b_osatlas"
@@ -50,8 +50,9 @@ SAVE_TAG="${MODEL_TAG}_${SAVE_TAG}"
 ACTOR_MODEL="qwen_vllm"
 JUDGE="point_in_bbox"
 
-MAX_IMAGE_SIDE=3600
-MAX_PIXELS=$((MAX_IMAGE_SIDE*MAX_IMAGE_SIDE))
+# MAX_IMAGE_SIDE=3600
+# MAX_PIXELS=$((MAX_IMAGE_SIDE*MAX_IMAGE_SIDE))
+MAX_PIXELS=6013280
 USE_MAX_IMAGE_SIDE=false
 USE_MAX_PIXELS=true
 
@@ -153,5 +154,5 @@ python -m src.vlmsearch \
     --image_root "${IMAGE_ROOT}" \
     --data_files "${DATA_FILE}" \
     --save_tag "${SAVE_TAG}" \
-    --frequency_penalty ${FREQUENCY_PENALTY} \
+    --repetition_penalty ${REPETITION_PENALTY} \
     ${args_to_add}

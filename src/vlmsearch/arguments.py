@@ -52,6 +52,6 @@ def get_args():
     parser.add_argument("--timeout_seconds", type=int, default=3600)
     parser.add_argument("--load_proposal_folder", type=str, default=None)
     parser.add_argument("--give_crop_feedback", type=bool, default=False)
-    parser.add_argument("--frequency_penalty", type=float, default=0.0)
+    parser.add_argument("--repetition_penalty", type=float, default=1.05)
     
     return parser.parse_args()
