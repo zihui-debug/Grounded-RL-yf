@@ -2,7 +2,7 @@
 
 NUM_GPUS=8 # set this to >=4 for 72b models, 1-2 for 3b,7b models
 NUM_PROCESSES=10
-dataset="vstar" # sat2, web_grounding, vstar, web_action
+dataset="web_grounding" # sat2, web_grounding, vstar, web_action
 PORT=9001 # port for vllm server
 
 # export port so src/vlmsearch/models/qwen_vllm.py can find the vllm server
