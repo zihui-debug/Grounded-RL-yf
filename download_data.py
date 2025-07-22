@@ -15,6 +15,7 @@ import os
 import sys
 import tarfile
 from huggingface_hub import snapshot_download
+import shutil
 
 # -----------------------------------------------------------------------------
 # 1️⃣ Check DATA_ROOT
@@ -47,6 +48,8 @@ datasets = [
     "visual_search",
     "web_action",
     "web_grounding",
+    # "MCTS_VSTAR_20250514_134727_images_1", # download if need visual search sft data (large ~50GB)
+    # "MCTS_VSTAR_20250514_134727_images_2", # download if need visual search sft data (large ~50GB)
 ]
 
 for ds in datasets:
@@ -61,6 +64,12 @@ for ds in datasets:
 
     print(f"🧹 Removing {ds}.tar …")
     os.remove(tar_path)
+
+    if ds in ["MCTS_VSTAR_20250514_134727_images_1", "MCTS_VSTAR_20250514_134727_images_2"]:
+        print(f"🧹 Moving {ds} to visual_search/MCTS_VSTAR_20250514_134727_images …")
+        shutil.move(os.path.join(DATA_ROOT, ds, "*"), os.path.join(DATA_ROOT, "visual_search", "MCTS_VSTAR_20250514_134727_images"))
+        print(f"🧹 Removing {ds} …")
+        shutil.rmtree(os.path.join(DATA_ROOT, ds))
 
 print("\n🎉 All done! Your data folders are ready under:")
 for ds in datasets:
