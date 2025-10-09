@@ -44,6 +44,7 @@ class DataConfig:
     val_batch_size: int = -1
     format_prompt: Optional[str] = None
     shuffle: bool = True
+    group_by_task: bool = False
     seed: int = 1
     max_pixels: int = 4194304
     min_pixels: int = 262144

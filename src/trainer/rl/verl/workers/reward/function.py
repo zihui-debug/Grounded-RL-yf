@@ -83,11 +83,14 @@ class FunctionRewardManager:
             score = self.reward_fn(response_str, ground_truth)
 
             if i < print_first_n:
+                print(f"Ground truth: {ground_truth}")
                 print(f"response_str: {response_str}; score: {score}")
             
             # print(f"response_str: {response_str}; valid_response_length: {valid_response_length}; score: {score}")
             reward_tensor[i, valid_response_length - 1] = score["overall"]
             for key, value in score.items():
-                reward_metrics[key].append(value)
+                # reward_metrics[key].append(value)
+                task_type = ground_truth['task_type']
+                reward_metrics[f'{key}/{task_type}'].append(value)
 
         return reward_tensor, reward_metrics

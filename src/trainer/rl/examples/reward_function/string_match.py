@@ -49,7 +49,7 @@ def sat_accuracy_reward(predict_str: str, ground_truth: str) -> float:
         pred_answer = choice_match.group(1).strip()
     
     # Compare the answers (case insensitive)
-    return 1.0 if pred_answer.lower() == ground_truth else 0.0
+    return 1.0 if pred_answer.lower() == ground_truth.lower() else 0.0
 
 
 def sat_compute_score(predict_str: str, ground_truth: str) -> float:

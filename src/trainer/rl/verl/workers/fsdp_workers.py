@@ -319,13 +319,30 @@ class FSDPWorker(Worker):
         )
         rollout_device_mesh = init_device_mesh("cuda", mesh_shape=(dp_size, tp_size), mesh_dim_names=("dp", "tp"))
 
-        self.rollout = vLLMRollout(
-            model_path=self.config.actor.model.model_path,
-            config=self.config.rollout,
-            tokenizer=self.tokenizer,
-        )
         if self.config.rollout.multiturn:
-            self.rollout_sharding_manager = FSDPVLLMShardingManagerMultiturn(
+            from .rollout.vllm_rollout import vLLMRolloutMultiturn, vLLMRolloutMultiturn_Traj
+            from ..utils.tokenizer import get_processor
+            # breakpoint()
+            self.rollout = vLLMRolloutMultiturn_Traj(
+                model_path=self.config.actor.model.model_path,
+                config=self.config.rollout,
+                tokenizer=self.tokenizer,
+                processor=get_processor(self.config.actor.model.model_path)
+            )
+        else:
+            self.rollout = vLLMRollout(
+                model_path=self.config.actor.model.model_path,
+                config=self.config.rollout,
+                tokenizer=self.tokenizer,
+            )
+        if self.config.rollout.multiturn:
+            # self.rollout_sharding_manager = FSDPVLLMShardingManagerMultiturn(
+            #     module=self.fsdp_module,
+            #     inference_engine=self.rollout.inference_engine,
+            #     device_mesh=rollout_device_mesh,
+            # )
+            # zsr debug
+            self.rollout_sharding_manager = FSDPVLLMShardingManager(
                 module=self.fsdp_module,
                 inference_engine=self.rollout.inference_engine,
                 device_mesh=rollout_device_mesh,

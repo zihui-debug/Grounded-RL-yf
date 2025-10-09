@@ -198,6 +198,7 @@ class DataParallelPPOActor(BasePPOActor):
             micro_batches = tqdm(micro_batches, desc="Compute log probs", position=2)
 
         for micro_batch in micro_batches:
+            # breakpoint()
             model_inputs = {**micro_batch.batch, **micro_batch.non_tensor_batch}
             log_probs = self._forward_micro_batch(model_inputs, temperature=temperature)
             log_probs_lst.append(log_probs)

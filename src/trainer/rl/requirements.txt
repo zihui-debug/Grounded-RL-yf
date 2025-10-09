@@ -9,12 +9,12 @@ omegaconf
 pandas
 peft
 pillow
-pyarrow>=15.0.0
+pyarrow
 pylatexenc
 qwen-vl-utils
 ray[default]
 tensordict
 torchdata
-transformers>=4.51.0,<4.53.0
-vllm>=0.7.3
+transformers
+vllm
 wandb

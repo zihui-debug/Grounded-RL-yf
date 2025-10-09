@@ -345,7 +345,7 @@ class RayPPOTrainer:
 
         self.n = self.config.worker.rollout.n
         if self.config.worker.rollout.multiturn:
-            self.config.worker.rollout.n = 1
+            # self.config.worker.rollout.n = 1
             self.config.worker.rollout.max_pixels = self.config.data.max_pixels
             self.config.worker.rollout.min_pixels = self.config.data.min_pixels
             self.config.worker.rollout.seed = None # disable seed for multiturn, otherwise rollouts will be deterministic for same prompt
@@ -419,13 +419,14 @@ class RayPPOTrainer:
         self.actor_rollout_wg.init_model()
 
         if self.config.worker.rollout.multiturn:
-            self.multiturn_rollout = RolloutMultiturn(
-                actor_rollout_wg=self.actor_rollout_wg,
-                config=self.config.worker.rollout,
-                tokenizer=self.tokenizer,
-                processor=self.processor,
-                n=self.n
-            )
+            pass
+            # self.multiturn_rollout = RolloutMultiturn(
+            #     actor_rollout_wg=self.actor_rollout_wg,
+            #     config=self.config.worker.rollout,
+            #     tokenizer=self.tokenizer,
+            #     processor=self.processor,
+            #     n=self.n
+            # )
 
     def _save_checkpoint(self) -> None:
         # path: {save_checkpoint_path}/global_step_{global_step}/{actor,critic}
@@ -536,7 +537,7 @@ class RayPPOTrainer:
                 with timer("step", timing_raw):
                     # generate a batch
                     with timer("gen", timing_raw):  # wg: worker group
-                        if self.config.worker.rollout.multiturn:
+                        if False and self.config.worker.rollout.multiturn:
                             gen_batch_output = self.multiturn_rollout.generate_sequences(gen_batch)
                         else:
                             gen_batch_output = self.actor_rollout_wg.generate_sequences(gen_batch)
@@ -565,9 +566,9 @@ class RayPPOTrainer:
                     batch.non_tensor_batch.pop("multi_modal_data", None)
 
                     # for multiturn, we need to add response_loss_mask to the batch
-                    if self.config.worker.rollout.multiturn: #"response_loss_mask" in gen_batch_output.batch.keys() and "response_loss_mask" not in batch.batch.keys():
-                        batch.batch["response_loss_mask"] = gen_batch_output.batch["response_loss_mask"]
-                        batch.non_tensor_batch["multi_modal_inputs"] = gen_batch_output.non_tensor_batch["multi_modal_inputs"]
+                    # if self.config.worker.rollout.multiturn: #"response_loss_mask" in gen_batch_output.batch.keys() and "response_loss_mask" not in batch.batch.keys():
+                    #     batch.batch["response_loss_mask"] = gen_batch_output.batch["response_loss_mask"]
+                    #     batch.non_tensor_batch["multi_modal_inputs"] = gen_batch_output.non_tensor_batch["multi_modal_inputs"]
 
                     # balance the number of valid tokens on each dp rank.
                     # Note that this breaks the order of data inside the batch.

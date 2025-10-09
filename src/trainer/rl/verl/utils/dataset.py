@@ -32,6 +32,145 @@ from . import torch_functional as VF
 from qwen_vl_utils import fetch_image
 
 
+GQA_PROMPT = '''
+You are a helpful visual assistant. Given an image and a question, carefully observe the image, identify important visual elements, and reason step by step to answer the question. You must systematically examine and verify relevant regions of the image, grounding the reasoning steps to specific (x1, y1, x2, y2) regions.
+
+** Instructions **:
+
+- Observe the image and identify important visual elements relevant to the question.
+- For each region, describe it concisely and provide its bounding box coordinates in the format [Region (x1, y1, x2, y2)], where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+- Coordinates must be absolute image regions formatted as: (x1, y1, x2, y2).
+- Reason about a region's relevance to the question and—if visible—its relation to prior steps.
+- At the end, summarize the conclusion and provide the answer enclosed in <answer> tags.
+
+** Output format **:
+
+<think>
+[Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.]
+</think>
+<answer>
+[Final answer to the question based on the reasoning above.]
+</answer>
+'''
+
+SPATIAL_PROMPT = '''
+You are a helpful visual assistant. Given an image and a question about spatial relationship, carefully observe the image, identify important visual elements, and reason step by step to answer the question. You must systematically examine and verify relevant regions of the image, grounding the reasoning steps to specific (x1, y1, x2, y2) regions.
+
+** Instructions **:
+
+- Observe the image and identify important visual elements relevant to the question.
+- Focus on the spatial relationships between the target objects mentioned in the question.
+- Examine each region to determine the spatial relationship asked in the question, describe it concisely and provide its bounding box coordinates in the format [Region (x1, y1, x2, y2)], where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+- Coordinates must be absolute image regions formatted as: (x1, y1, x2, y2).
+- Reason about a region's relevance to the question and—if visible—its relation to prior steps.
+- Consider the target object locations when reasoning about their spatial relationships
+- At the end, summarize the conclusion and provide the answer enclosed in <answer> tags.
+
+** Output format **:
+
+<think>
+[Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.]
+</think>
+<answer>
+[Final answer to the question based on the reasoning above.]
+</answer>
+'''
+
+ATTRIBUTE_PROMPT = '''
+You are a helpful visual assistant. Given an image and a question about visual attribute, carefully observe the image, identify important visual elements, and reason step by step to answer the question. You must systematically examine and verify relevant regions of the image, grounding the reasoning steps to specific (x1, y1, x2, y2) regions.
+
+** Instructions **:
+
+- Observe the image and identify important visual elements relevant to the question.
+- Focus on the visual attributes of the target object mentioned in the question
+- For each region, describe it concisely and provide its bounding box coordinates in the format [Region (x1, y1, x2, y2)], where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+- Coordinates must be absolute image regions formatted as: (x1, y1, x2, y2).
+- Reason about a region's relevance to the question and—if visible—its relation to prior steps.
+- At the end, summarize the conclusion and provide the answer enclosed in <answer> tags.
+
+** Output format **:
+
+<think>
+[Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.]
+</think>
+<answer>
+[Final answer to the question based on the reasoning above.]
+</answer>
+'''
+
+# negative问题prompt里应该不能指出是negative，所以跟qa保持一致？
+NEGATIVE_PROMPT = '''
+You are a helpful visual assistant. Given an image and a question, carefully observe the image, identify important visual elements, and reason step by step to answer the question. You must systematically examine and verify relevant regions of the image, grounding the reasoning steps to specific (x1, y1, x2, y2) regions.
+
+** Instructions **:
+
+- Observe the image and identify important visual elements relevant to the question.
+- For each region, describe it concisely and provide its bounding box coordinates in the format [Region (x1, y1, x2, y2)], where (x1, y1) is the top-left corner and (x2, y2) is the bottom-right corner.
+- Coordinates must be absolute image regions formatted as: (x1, y1, x2, y2).
+- Reason about a region's relevance to the question and—if visible—its relation to prior steps.
+- At the end, summarize the conclusion and provide the answer enclosed in <answer> tags.
+
+** Output format **:
+
+<think>
+[Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.]
+</think>
+<answer>
+[Final answer to the question based on the reasoning above.]
+</answer>
+'''
+
+WEBGROUNDING_PROMPT = '''
+A conversation between User and Assistant. The User asks a question, and the Assistant solves it. The Assistant systematically reasons through the problem step by step, verifying each step and grounding every step to a specific point in the image.
+
+All reasoning processes must be enclosed within a single set of '<think>' tags, with each reasoning step explicitly referencing a coordinate:
+
+<think>
+Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.
+</think>
+
+The final answer should be enclosed in '<answer>' tags in the format:\n<answer> (xf, yf) </answer>
+
+Your task is to help the user identify the precise coordinates (x, y) of a specific area/element/object on the screen based on a description.
+- Aim to point to the center or a representative point within the described area/element/object as accurately as possible.
+- If the description is unclear or ambiguous, infer the most relevant area or element based on its likely context or purpose.
+- The final output should be the single most precise coordinate for the requested element.
+- The Assistant should verify each step and check multiple possible solutions before selecting the final answer.
+'''
+
+WEBACTION_PROMPT = '''
+You are a helpful Assistant tasked with navigating a web browser. These tasks will be accomplished through the use of specific actions you can issue. Your task is to choose the action that makes the most progress towards an objective. You should systematically reason through the problem step by step by checking and verifying possible actions and webpage regions, while grounding reasoning steps to specific (x1, y1, x2, y2) regions in the image:
+Each reasoning step must be enclosed within '<think>' tags and reference exactly specific regions (x1, x2, y1, y2):
+<think>
+Step-by-step reasoning, referencing regions as [Region (x_min, y_min, x_max, y_max)] and connecting observations to answer the question.
+</think>
+When ready to provide the final answer, enclose it within '<answer>' tags:
+<answer> {action} </answer>
+- Each reasoning step must explicitly describe and evaluate the region’s relevance to the objective and proposing an action.
+- Never repeat coordinates from previous steps.
+- Look at diverse webpage regions to figure out which action should be taken.
+- Verify your selection by examining multiple possible solutions.
+
+**Inputs**
+Here's the information you'll have:\n1. OBJECTIVE: This is the task you are trying to complete.\n2. The web page screenshot: This is a screenshot of the current webpage you are on, with each interactable element assigned a unique numerical id. Each bounding box and its respective id shares the same color.\n3. PREVIOUS ACTIONS: This is the actions that you have performed prior to getting to the current page, but instead of the button id, the button text of the actions taken on the previously navigated pages are provided.\n\n**Action Space**\nYou can take the following actions:\n1. ```click [id]```: This action clicks on an element with a specific id on the webpage.\n2. ```type [id] [content]```: Use this to type the content into the field with id. By default, typing the content simulates pressing the "Enter" key afterward to submit the text.\n3. ```scroll [down]```: Scroll the page down.\n4. ```go_back```: Navigate to the previously viewed page.\n5. ```stop [answer]```: Issue this action when you believe the task is complete. If the objective is to find a text-based answer, provide the answer in the bracket. If no answer is required, output empty brackets.\n\n**Guidelines**\nTo be successful, it is very important to follow the following rules:\n2. Generate the final action in the correct format. For example, '<answer> click [1234] </answer>'.\n3. Issue the stop action (i.e. stop [answer]) when you think you have achieved the objective. Don't generate anything after stop.\n4. In your final answer, you should only output a single action and should never output a prediction involving taking multiple actions.
+'''
+
+VSTAR_MULTITURN_PROMPT = '''
+You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>\n     {\"name\": \"search_bbox_region\", \"arguments\": {\"bbox\": [x1, y1, x2, y2], \"phrase\": \"phrase_description\"}}\n     </tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering.
+'''
+
+SYSTEM_PROMPT = {
+    "vstar": GQA_PROMPT,
+    "vaw": ATTRIBUTE_PROMPT,
+    "spatial": SPATIAL_PROMPT,
+    "negative": NEGATIVE_PROMPT,
+    "webgrounding": WEBGROUNDING_PROMPT,
+    "webaction": WEBACTION_PROMPT,
+
+    "vstar_multiturn": VSTAR_MULTITURN_PROMPT,
+}
+
+
 def collate_fn(features: List[Dict[str, Any]]) -> Dict[str, Any]:
     tensors = defaultdict(list)
     non_tensors = defaultdict(list)
@@ -95,7 +234,7 @@ class RLHFDataset(Dataset, ImageProcessMixin):
 
     def __init__(
         self,
-        data_path: str,
+        data_path: str, # 这里可以是单个 jsonl/parquet/dataset，也可以是 txt
         tokenizer: PreTrainedTokenizer,
         processor: Optional[ProcessorMixin],
         prompt_key: str = "prompt",
@@ -124,21 +263,32 @@ class RLHFDataset(Dataset, ImageProcessMixin):
         self.max_side_length = max_side_length
         self.min_side_length = min_side_length
         self.image_root = image_root
-        if "@" in data_path:
-            data_path, data_split = data_path.split("@")
-        else:
-            data_split = "train"
+        # --------------------------
+        # 1. 判断 data_path 是否是 txt
+        # --------------------------
+        self.data_path = data_path
+        all_datasets = []
+        if data_path.endswith(".txt"):
+            with open(data_path, "r", encoding="utf-8") as f:
+                lines = [l.strip() for l in f if l.strip()]
+            for line in lines:
+                task_type, path = [x.strip() for x in line.split("&")]
+                dataset = self._load_single_dataset(path)
+                # 给 dataset 增加一个 "task_type" 字段
+                dataset = dataset.add_column("task_type", [task_type] * len(dataset))
+                all_datasets.append(dataset)
 
-        if data_path.endswith(".jsonl"):
-            self.dataset = load_dataset("json", data_files=data_path, split=data_split)
-        elif os.path.isdir(data_path):
-            self.dataset = load_dataset("parquet", data_dir=data_path, split="train")
-        elif os.path.isfile(data_path):
-            self.dataset = load_dataset("parquet", data_files=data_path, split="train")
-        else:
-            # load remote dataset from huggingface hub
-            self.dataset = load_dataset(data_path, split=data_split)
+            # 合并多个子数据集
+            from datasets import concatenate_datasets
+            self.dataset = concatenate_datasets(all_datasets)
 
+        else:
+            # 单数据集情况，兼容原始逻辑
+            dataset = self._load_single_dataset(data_path)
+            dataset = dataset.add_column("task_type", ["default"] * len(dataset))
+            self.dataset = dataset
+
+        # format_prompt
         self.format_prompt = None
         if format_prompt:
             with open(format_prompt, encoding="utf-8") as f:
@@ -150,10 +300,30 @@ class RLHFDataset(Dataset, ImageProcessMixin):
 
         print(f"Image processor: {self.processor.image_processor.__class__.__name__}")
 
+    def _load_single_dataset(self, path: str):
+        """根据路径加载单个数据集"""
+        if "@" in path:
+            path, data_split = path.split("@")
+        else:
+            data_split = "train"
+
+        if path.endswith(".jsonl"):
+            dataset = load_dataset("json", data_files=path, split=data_split)
+        elif os.path.isdir(path):
+            dataset = load_dataset("parquet", data_dir=path, split="train")
+        elif os.path.isfile(path):
+            dataset = load_dataset("parquet", data_files=path, split="train")
+        else:
+            dataset = load_dataset(path, split=data_split)
+        return dataset
+
     def _build_messages(self, example: Dict[str, Any]) -> List[Dict[str, Any]]:
         prompt_str: str = example[self.prompt_key]
         messages = []
-        if self.format_prompt:
+        if "task_type" in example and example["task_type"] in SYSTEM_PROMPT:
+            system_prompt = SYSTEM_PROMPT[example["task_type"]]
+            messages.append({"role": "system", "content": system_prompt.strip()})
+        elif self.format_prompt:
             messages.append({"role": "system", "content": self.format_prompt.strip()})
 
         if self.image_key in example:
@@ -179,6 +349,14 @@ class RLHFDataset(Dataset, ImageProcessMixin):
 
     def __len__(self):
         return len(self.dataset)
+    
+    @property
+    def task_types(self):
+        task_list = []
+        for sample in self.dataset:
+            task_type = sample.get("task_type", "general")
+            task_list.append(task_type)
+        return task_list
 
     def __getitem__(self, index):
         example: dict = self.dataset[index]
@@ -186,11 +364,13 @@ class RLHFDataset(Dataset, ImageProcessMixin):
 
         if self.image_key in example:
             prompt = self.processor.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)
-            images = [self.process_image(image) for image in example.pop(self.image_key)]
+            image_paths = example.pop(self.image_key)
+            images = [self.process_image(image) for image in image_paths]
             model_inputs = self.processor(images, [prompt], add_special_tokens=False, return_tensors="pt")
             input_ids = model_inputs.pop("input_ids")[0]
             attention_mask = model_inputs.pop("attention_mask")[0]
             example["multi_modal_data"] = {"image": images}
+            example["multi_modal_data"]['image_path'] = os.path.join(self.image_root, image_paths[0]) 
             example["multi_modal_inputs"] = dict(model_inputs)
         else:
             prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)

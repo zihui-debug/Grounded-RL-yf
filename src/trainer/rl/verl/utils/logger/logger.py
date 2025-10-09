@@ -87,6 +87,7 @@ class WandbLogger(Logger):
             project=config["trainer"]["project_name"],
             name=config["trainer"]["experiment_name"],
             config=config,
+            mode='offline'
         )
 
     def log(self, data: Dict[str, Any], step: int) -> None:

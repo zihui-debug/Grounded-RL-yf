@@ -36,9 +36,11 @@ def merge_by_placement(tensors: List[torch.Tensor], placement: Placement):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--local_dir", required=True, type=str, help="The path for your saved model")
+    parser.add_argument("--local_dir", required=False, type=str, help="The path for your saved model")
     parser.add_argument("--hf_upload_path", default=False, type=str, help="The path of the huggingface repo to upload")
     args = parser.parse_args()
+
+    args.local_dir = '/home/zhuyousong/yangfan/grounded-rl/checkpoints/rl/vigorl_qwen2_5_vl_7b_traj_vigorl_traj__mrl16384_lim5_cs512_os50_kl1.0e-2_lr1.0e-6_wd1.0e-2_fvttrue_rbs128_gbs64_mgn1.0_wr0.0_20251005_004253/global_step_250/actor'
 
     assert not args.local_dir.endswith("huggingface"), "The local_dir should not end with huggingface"
     local_dir = args.local_dir

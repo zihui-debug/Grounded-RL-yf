@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .vllm_rollout_spmd import vLLMRollout
 from .vllm_rollout_spmd_multiturn import vLLMRolloutMultiturn
+from .vllm_rollout_spmd_multiturn_traj import vLLMRolloutMultiturn_Traj
 
 
-__all__ = ["vLLMRollout", "vLLMRolloutMultiturn"]
+__all__ = ["vLLMRolloutMultiturn", "vLLMRolloutMultiturn_Traj"]
