@@ -83,8 +83,8 @@ class FunctionRewardManager:
             score = self.reward_fn(response_str, ground_truth)
 
             if i < print_first_n:
-                print(f"Ground truth: {ground_truth}")
                 print(f"response_str: {response_str}; score: {score}")
+                print(f"Ground truth: {ground_truth}")
             
             # print(f"response_str: {response_str}; valid_response_length: {valid_response_length}; score: {score}")
             reward_tensor[i, valid_response_length - 1] = score["overall"]

@@ -510,6 +510,7 @@ class Judge:
 
         #Accounitng for the fact that the answers may be in different cases
         gt_ans = gt_ans.lower()
+        pred_ans = pred_ans.lower()
 
         pred_ans = self._remove_punctuation_spaces(pred_ans)
         gt_ans = self._remove_punctuation_spaces(gt_ans)

@@ -118,7 +118,7 @@ def main():
                 "PYTORCH_CUDA_ALLOC_CONF": "expandable_segments:False",
             }
         }
-        ray.init(runtime_env=runtime_env, _temp_dir="/home/zhuyousong/ray_tmp")
+        ray.init(runtime_env=runtime_env, _temp_dir="/home/zhaochaoyang/ray_tmp")
 
     # breakpoint()
     runner = Runner.remote()

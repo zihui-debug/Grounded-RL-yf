@@ -11,6 +11,7 @@ import openai
 from vlmsearch.arguments import get_args
 from vlmsearch.models import get_model
 from vlmsearch.tree_search.single_path_rollouts import SinglePathRollouts
+from vlmsearch.tree_search.single_path_rollouts_traj import SinglePathRollouts_Traj
 from vlmsearch.tree_search.mcts_search import MonteCarloTreeSearch
 from vlmsearch.reward_funcs.judge import Judge
 from datasets import load_dataset
@@ -43,6 +44,7 @@ def init_model_and_judge(args):
         first_rollout_no_sample=args.first_rollout_no_sample,
         multicrop=args.multicrop,
         repetition_penalty=args.repetition_penalty,
+        max_pixels=args.max_pixels,
     )
 
     # judge
@@ -68,7 +70,7 @@ def init_model_and_judge(args):
 
     # Choose search method
     if args.search_method == "single_path_rollouts":
-        tree_searcher = SinglePathRollouts(
+        tree_searcher = SinglePathRollouts_Traj(
             llm_wrapper=model_wrapper,
             judge=judge,
             system_prompt=system_prompt,
@@ -216,6 +218,8 @@ def process_samples(
         final_ckpt_name = f"rollouts_{save_tag}_worker{worker_id}_final.jsonl"
         final_ckpt_path = os.path.join(out_dir, final_ckpt_name)
         logging.info(f"Worker {worker_id}: saving final {len(results)} results to {final_ckpt_path}")
+        os.makedirs(os.path.dirname(final_ckpt_path), exist_ok=True)
+
         with open(final_ckpt_path, "w") as f:
             for r in results:
                 f.write(json.dumps(r) + "\n")
@@ -256,7 +260,7 @@ def main():
     if args.use_python_mp:
         #--- Multiprocessing path ---
         raw_dataset = load_dataset(
-            "src/vlmsearch/datasets/data_loader.py",
+            "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/vlmsearch/datasets/data_loader.py",
             data_files={"train": data_files_list},
             image_root=args.image_root,
             split="train",

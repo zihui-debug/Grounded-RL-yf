@@ -155,8 +155,12 @@ When ready to provide the final answer, enclose it within '<answer>' tags:
 Here's the information you'll have:\n1. OBJECTIVE: This is the task you are trying to complete.\n2. The web page screenshot: This is a screenshot of the current webpage you are on, with each interactable element assigned a unique numerical id. Each bounding box and its respective id shares the same color.\n3. PREVIOUS ACTIONS: This is the actions that you have performed prior to getting to the current page, but instead of the button id, the button text of the actions taken on the previously navigated pages are provided.\n\n**Action Space**\nYou can take the following actions:\n1. ```click [id]```: This action clicks on an element with a specific id on the webpage.\n2. ```type [id] [content]```: Use this to type the content into the field with id. By default, typing the content simulates pressing the "Enter" key afterward to submit the text.\n3. ```scroll [down]```: Scroll the page down.\n4. ```go_back```: Navigate to the previously viewed page.\n5. ```stop [answer]```: Issue this action when you believe the task is complete. If the objective is to find a text-based answer, provide the answer in the bracket. If no answer is required, output empty brackets.\n\n**Guidelines**\nTo be successful, it is very important to follow the following rules:\n2. Generate the final action in the correct format. For example, '<answer> click [1234] </answer>'.\n3. Issue the stop action (i.e. stop [answer]) when you think you have achieved the objective. Don't generate anything after stop.\n4. In your final answer, you should only output a single action and should never output a prediction involving taking multiple actions.
 '''
 
+# VSTAR_MULTITURN_PROMPT = '''
+# You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>\n     {\"name\": \"search_bbox_region\", \"arguments\": {\"bbox\": [x1, y1, x2, y2], \"phrase\": \"phrase_description\"}}\n     </tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering.
+# '''
+
 VSTAR_MULTITURN_PROMPT = '''
-You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>\n     {\"name\": \"search_bbox_region\", \"arguments\": {\"bbox\": [x1, y1, x2, y2], \"phrase\": \"phrase_description\"}}\n     </tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering.
+You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>(x1, y1, x2, y2)</tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering.
 '''
 
 SYSTEM_PROMPT = {
@@ -168,6 +172,7 @@ SYSTEM_PROMPT = {
     "webaction": WEBACTION_PROMPT,
 
     "vstar_multiturn": VSTAR_MULTITURN_PROMPT,
+    "vstar_multiturn_trajformat": VSTAR_MULTITURN_PROMPT,
 }
 
 
@@ -370,7 +375,9 @@ class RLHFDataset(Dataset, ImageProcessMixin):
             input_ids = model_inputs.pop("input_ids")[0]
             attention_mask = model_inputs.pop("attention_mask")[0]
             example["multi_modal_data"] = {"image": images}
-            example["multi_modal_data"]['image_path'] = os.path.join(self.image_root, image_paths[0]) 
+            if 'multiturn' in example['task_type']:
+                example["multi_modal_data"]['image_path'] = os.path.join(self.image_root, image_paths[0]) 
+                example["multi_modal_data"]["input_width"], example["multi_modal_data"]["input_height"] = images[0].size
             example["multi_modal_inputs"] = dict(model_inputs)
         else:
             prompt = self.tokenizer.apply_chat_template(messages, add_generation_prompt=True, tokenize=False)

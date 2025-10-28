@@ -1,7 +1,10 @@
 #!/bin/bash
+
+
+
 export VLLM_ATTENTION_BACKEND=FLASH_ATTN
-HEAD_IP=10.57.1.13  # 这里为head节点的IP，也就是机器A的IP
-LOCAL_IP=10.57.1.14  # 这里为本机ip
+HEAD_IP=192.168.100.35  # 这里为head节点的IP，也就是机器A的IP
+LOCAL_IP=192.168.100.37  # 这里为本机ip
 PORT=8888  # 这里的port需要和前面的保持一致
 
 # ray status

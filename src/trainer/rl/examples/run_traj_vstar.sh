@@ -1,4 +1,6 @@
 #!/bin/bash
+export WANDB_API_KEY=4a2e3972e8397f259ae8c1ccdacb314c6701f132
+export RAY_ADDRESS="ray://192.168.100.35:10001"
 
 RUN_VAL_ONLY=false
 
@@ -9,11 +11,11 @@ domain="traj" # web_grounding, vstar, spatial, web_action
 
 condition="vigorl" # vanilla_thinking, vigorl, vigorl_multiturn
 
-SAVE_PATH_BASE="/home/zhuyousong/yangfan/grounded-rl/checkpoints/rl"
-IMAGE_ROOT="/home/zhuyousong/yangfan/datasets/gsarch/vigorl_datasets"
+SAVE_PATH_BASE="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm"
+IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/gsarch/vigorl_datasets"
 
 NUM_GPUS=8 # number of gpus on node
-NNODES=1
+NNODES=2
 
 trap 'ray stop --force; exit' SIGINT SIGTERM
 
@@ -25,7 +27,7 @@ MIN_PIXELS=3136
 MAX_PIXELS=4194304
 
 GROUP_BY_TASK=false
-export WANDB_MODE=offline
+# export WANDB_MODE=offline
 export VLLM_NO_USAGE_STATS=1
 export DO_NOT_TRACK=1
 
@@ -71,9 +73,9 @@ elif [ "$domain" == "vstar" ]; then
     elif [ "$condition" == "vigorl" ]; then
     
         # NOTE: V* single turn not tested
-        MODEL_PATH="$DATA_ROOT/checkpoints/PATH_TO_SFT_MODEL" 
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/qwen-vl-finetune/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-refinebbox-sft-maxpixel12845056-lr2e-6_1009" 
         SYSTEM_PROMPT="./examples/format_prompt/general_qa.jinja" # replace with the prompt for your dataset
-        MODEL_TAG="vigorl_qwen2_5_vl_3b_vstar"
+        MODEL_TAG="tra_qwen2_5_vl_7b_vstar"
         REWARD_FUNCTION=./examples/reward_function/string_match_grounded_thinking.py:sat_compute_score
 
     elif [ "$condition" == "vigorl_multiturn" ]; then
@@ -90,8 +92,8 @@ elif [ "$domain" == "vstar" ]; then
         REWARD_FUNCTION=./examples/reward_function/string_match_multiturn.py:string_match_multiturn_compute_score
     fi
 
-    train_file="$DATA_ROOT/visual_search/vigorl_SA_RL.jsonl"
-    val_file="$DATA_ROOT/visual_search/vstar/vstarbench_test_RL.jsonl"
+    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/processed_data/vigorl_rl_data/vigorl_SA_RL.jsonl"
+    val_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/processed_data/vigorl_rl_data/vstarbench_test_RL.jsonl"
 
 elif [ "$domain" == "spatial" ]; then
 
@@ -155,7 +157,7 @@ elif [ "$domain" == "traj" ]; then
 
     elif [ "$condition" == "vigorl" ]; then
 
-        MODEL_PATH="/home/zhuyousong/yangfan/grounded-rl/checkpoints/sft/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-refinebbox-sft-maxpixel12845056-lr2e-6_1004" 
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/qwen-vl-finetune/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-refinebbox-sft-maxpixel12845056-lr2e-6_1009" 
         SYSTEM_PROMPT="" # replace with the prompt for your dataset
         MODEL_TAG="vigorl_qwen2_5_vl_7b_traj_vstar"
         REWARD_FUNCTION=./examples/reward_function/all_reward.py:compute_score
@@ -167,8 +169,8 @@ elif [ "$domain" == "traj" ]; then
 
     fi
 
-    train_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data_vstar.txt"
-    val_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data_val_vstar.txt"
+    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_vstar.txt"
+    val_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_val_vstar.txt"
 
 fi
 
@@ -201,10 +203,10 @@ STOP_STRINGS="</tool_call>,</answer>,<|im_end|>"
 ########################################################
 TOTAL_EPISODES=1000
 SAVE_LIMIT=50
-SAVE_FREQ=1
+SAVE_FREQ=25
 MAX_STEPS=5000 # NOTE: this will override the total_episodes
 VAL_BEFORE_TRAIN=false
-KL_COEF=1.0e-2
+KL_COEF=0.0 #zsr修改为0
 VAL_FREQ=-1
 VAL_BATCH_SIZE=1024
 REF_UPDATE_STEPS=99999
@@ -301,7 +303,7 @@ SAVE_TAG="${SAVE_TAG}_${HYPERPARAM_TAG}"
 SAVE_PATH=${SAVE_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}
 mkdir -p ${SAVE_PATH}
 
-LOG_PATH_BASE='/home/zhuyousong/yangfan/grounded-rl/nohup_log/train/rl'
+LOG_PATH_BASE='/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl'
 LOG_PATH="${LOG_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}.log"
 
 python3 -m verl.trainer.main \

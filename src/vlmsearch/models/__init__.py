@@ -14,6 +14,8 @@ AVAILABLE_MODELS = {
     "qwen2_5_vl": "Qwen2_5_VL",
     "gpt4o": "GPT4o",
     "qwen_vllm": "Qwen_VLLM",
+    "qwen_vllm_traj": "Qwen_VLLM_Traj",
+    "qwen2_5_vl_traj": "Qwen2_5_VL_Traj",
 }
 
 

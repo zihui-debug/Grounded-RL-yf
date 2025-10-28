@@ -27,6 +27,8 @@ from ....utils.torch_dtypes import PrecisionType
 from ..base import BaseRollout
 from ..config import RolloutConfig
 
+from .prompt import observation_template, final_observation_template
+
 IMAGE_FACTOR = 28
 MIN_PIXELS = 4 * 28 * 28
 # MAX_PIXELS = 16384 * 28 * 28
@@ -649,6 +651,90 @@ def extract_and_crop_bboxes(text: str, image: Image.Image) -> List[Image.Image]:
 
     return cropped_images
 
+def extract_and_crop_bboxes_v2(text: str, image: Image.Image) -> List[Image.Image]:
+    """
+    从文本中的 <tool_call> JSON 提取 bbox（支持单个或多个），
+    并在原始 PIL 图像上裁剪对应区域。
+
+    参数：
+        text: 包含 <tool_call> 的完整文本。
+        image: 原始 PIL.Image 图像。
+
+    返回：
+        List[Image.Image]: 裁剪得到的图像列表。
+    """
+    # 提取 <tool_call> 内容
+    tool_call_match = re.search(r"<tool_call>(.*?)</tool_call>", text, re.DOTALL)
+    if not tool_call_match:
+        return []
+
+    bbox_str = tool_call_match.group(1)
+    
+    bbox_str = bbox_str.strip()
+    # 匹配形如 (x1, y1, x2, y2) 或 [x1, y1, x2, y2] 的坐标
+    matches = re.findall(
+        r'[\(\[]\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*[\)\]]',
+        bbox_str
+    )
+
+    # 转为 [[x1, y1, x2, y2], ...] 的格式
+    bbox_data = [[int(x1), int(y1), int(x2), int(y2)] for x1, y1, x2, y2 in matches]
+
+    try:
+        # # 提取 bbox 信息
+        # bbox_data = tool_data.get("arguments", {}).get("bbox", None)
+        if bbox_data is None:
+            return []
+        if not isinstance(bbox_data, list) or len(bbox_data) == 0:
+            print(text)
+            print("⚠️ bbox 列表长度为 0")
+            return []
+
+        # 如果是单个 bbox（1 维列表）
+        if isinstance(bbox_data[0], (int, float)):
+            bboxes = [bbox_data]
+        # 如果是多个 bbox（2 维列表）
+        elif isinstance(bbox_data[0], (list, tuple)) and isinstance(bbox_data[0][0], (int, float)):
+            bboxes = bbox_data
+        else:
+            print(text)
+            print("⚠️ bbox 格式不符合要求")
+            return []
+    except Exception as e:
+        print(text)
+        print(f"⚠️ json或bbox格式不符合要求，提取 bbox 时出错: {e}")
+        return []
+
+    cropped_images = []
+    for bbox in bboxes:
+        try:
+            if len(bbox) != 4:
+                continue  # 跳过不合法的 bbox
+            x1, y1, x2, y2 = map(float, bbox)
+
+            # 保证坐标合法
+            x1, y1 = max(0, x1), max(0, y1)
+            x2, y2 = min(image.width, x2), min(image.height, y2)
+
+            # 裁剪图像
+            if x2 <= x1 or y2 <= y1:
+                continue  # 跳过无效的 bbox
+            cropped = image.crop((x1, y1, x2, y2))
+            if cropped.width < 28 or cropped.height<28:
+                resized_height, resized_width = smart_resize(
+                    cropped.height,
+                    cropped.width,
+                    factor=28,
+                )
+                cropped = cropped.resize((resized_width, resized_height))
+            cropped_images.append(cropped)
+        except Exception as e:
+            print(text)
+            print(f"⚠️ 裁剪 bbox 时出错: {e}")
+            continue
+
+    return cropped_images
+
 def pad_to_max_stack(tensor_list: List[torch.Tensor], pad_token_id: int, dim: int) -> torch.Tensor:
     assert all([t.ndim == 1 for t in tensor_list])
     max_len = max([t.size(0) for t in tensor_list])
@@ -1132,24 +1218,27 @@ class vLLMRolloutMultiturn_Traj(BaseRollout):
 
                     # Check & Parse Crop Operation
                     # breakpoint()
-                    cropped_images_ = extract_and_crop_bboxes(cur_text, input_images[i][0])
+                    cropped_images_ = extract_and_crop_bboxes_v2(cur_text, input_images[i][0])
                     if cropped_images_:
                         # breakpoint()
                         # For each found <tool>, parse coordinate, crop, and append <observation> <image> </observation>
                         if vllm_inputs[i]["multi_modal_data"] is not None:
 
+                            cropped_images_ = [cropped_images_[0]] # 如果设定是每轮只crop一个区域的话
+
                             if len(vllm_inputs[i]["multi_modal_data"]["image"]) >= self.limit_images - 1:
                                 # breakpoint()
-                                if len(cropped_images_) == 1:
-                                    obs_prompt = "<observation>\nHere is the crop of the image showing the region:\n<|vision_start|><|image_pad|><|vision_end|>\n</observation><|im_end|>\n<|im_start|>assistant\n<think>\nBased on all the regions I've examined, I can now provide my final answer.\n</think>\n<answer>"
-                                else:
-                                    obs_prompt = f"<observation>\nHere are the crops of the image showing {len(cropped_images_)} regions:\n"+f"<|vision_start|><|image_pad|><|vision_end|>\n"*len(cropped_images_)+"</observation><|im_end|>\n<|im_start|>assistant\n<think>\nBased on all the regions I've examined, I can now provide my final answer.\n</think>\n<answer>"
+                                # if len(cropped_images_) == 1:
+                                #     obs_prompt = "\n<|im_start|>user\n<observation>\nHere is the crop of the image showing the region:\n<|vision_start|><|image_pad|><|vision_end|>\n</observation><|im_end|>\n<|im_start|>assistant\n<think>\nBased on all the regions I've examined, I can now provide my final answer.\n</think>\n<answer>"
+                                # else:
+                                #     obs_prompt = f"\n<|im_start|>user\n<observation>\nHere are the crops of the image showing {len(cropped_images_)} regions:\n"+f"<|vision_start|><|image_pad|><|vision_end|>\n"*len(cropped_images_)+"</observation><|im_end|>\n<|im_start|>assistant\n<think>\nBased on all the regions I've examined, I can now provide my final answer.\n</think>\n<answer>"
+                                obs_prompt = final_observation_template(iteration=iteration_count-1)
                             else:
-                                if len(cropped_images_) == 1:
-                                    obs_prompt = "<observation>\nHere is the crop of the image showing the region:\n<|vision_start|><|image_pad|><|vision_end|>\n</observation><|im_end|>\n<|im_start|>assistant\n"
-                                else:
-                                    obs_prompt = f"<observation>\nHere are the crops of the image showing {len(cropped_images_)} regions:\n"+f"<|vision_start|><|image_pad|><|vision_end|>\n"*len(cropped_images_)+"</observation><|im_end|>\n<|im_start|>assistant\n"
-
+                                # if len(cropped_images_) == 1:
+                                #     obs_prompt = "\n<|im_start|>user\n<observation>\nHere is the crop of the image showing the region:\n<|vision_start|><|image_pad|><|vision_end|>\n</observation><|im_end|>\n<|im_start|>assistant\n"
+                                # else:
+                                #     obs_prompt = f"\n<|im_start|>user\n<observation>\nHere are the crops of the image showing {len(cropped_images_)} regions:\n"+f"<|vision_start|><|image_pad|><|vision_end|>\n"*len(cropped_images_)+"</observation><|im_end|>\n<|im_start|>assistant\n"
+                                obs_prompt = observation_template(iteration=iteration_count-1)
                             vllm_inputs[i]["multi_modal_data"]["image"].extend(cropped_images_)
                             crop_images[i].extend(cropped_images_)
                             
@@ -1184,7 +1273,7 @@ class vLLMRolloutMultiturn_Traj(BaseRollout):
                             # print("HERE8")
                     if iteration_count == self.max_iterations - 1:
                         # breakpoint()
-                        end_prompt = f"\n<|im_start|>assistant\n<think>\nBased on all the information I've gathered, I'll now provide my final answer.\n</think>\n<answer>"
+                        end_prompt = f"\n<|im_start|>assistant\n<think>Based on all the regions I've examined, I can now provide my final answer.</think>\n<answer>"
                         end_prompt_ids = self.tokenizer.encode(end_prompt, add_special_tokens=False)
                         vllm_inputs[i]["prompt_token_ids"].extend(end_prompt_ids)
                         response_ids[i].extend(end_prompt_ids)

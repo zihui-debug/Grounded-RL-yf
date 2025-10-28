@@ -1,4 +1,6 @@
 #!/bin/bash
+export WANDB_API_KEY=4a2e3972e8397f259ae8c1ccdacb314c6701f132
+export RAY_ADDRESS="ray://192.168.100.35:10001"
 
 RUN_VAL_ONLY=false
 
@@ -9,11 +11,11 @@ domain="traj" # web_grounding, vstar, spatial, web_action
 
 condition="vigorl_multiturn" # vanilla_thinking, vigorl, vigorl_multiturn
 
-SAVE_PATH_BASE="/home/zhuyousong/yangfan/grounded-rl/checkpoints/rl"
-IMAGE_ROOT="/home/zhuyousong/yangfan/datasets/gsarch/vigorl_datasets"
+SAVE_PATH_BASE="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/rl"
+IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/gsarch/vigorl_datasets"
 
 NUM_GPUS=8 # number of gpus on node
-NNODES=1
+NNODES=2
 
 trap 'ray stop --force; exit' SIGINT SIGTERM
 
@@ -22,10 +24,10 @@ CROP_SIZE=512
 OFFSET=50
 ADD_DOT=false
 MIN_PIXELS=3136
-MAX_PIXELS=4194304
+MAX_PIXELS=2097152
 
 GROUP_BY_TASK=false
-export WANDB_MODE=offline
+# export WANDB_MODE=offline
 export VLLM_NO_USAGE_STATS=1
 export DO_NOT_TRACK=1
 
@@ -162,16 +164,16 @@ elif [ "$domain" == "traj" ]; then
 
     elif [ "$condition" == "vigorl_multiturn" ]; then
 
-        MODEL_PATH="/home/zhuyousong/yangfan/grounded-rl/checkpoints/sft/Qwen2.5-VL-7B-Instruct-gqa-multiturn-sft-maxpixel12845056-lr2e-6_1005" 
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-multiturn-sft-maxpixel12845056-maxlength32768-lr2e-6-ep10_1025" 
         SYSTEM_PROMPT="" # replace with the prompt for your dataset
-        MODEL_TAG="vigorl_qwen2_5_vl_7b_traj_vstar_multiturn"
+        MODEL_TAG="vigorl_qwen2_5_vl_7b_traj_minio3_multiturn"
         REWARD_FUNCTION=./examples/reward_function/all_reward.py:compute_score
         MULTITURN=true
 
     fi
 
-    train_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data_vstar_multiturn.txt"
-    val_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data_val_vstar_multiturn.txt"
+    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_vstar_multiturn.txt"
+    val_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_val_vstar_multiturn.txt"
 
 fi
 
@@ -258,20 +260,24 @@ if [ "$MULTITURN" == "true" ]; then
   MAX_GRAD_NORM=0.2
   LR=1.0e-6
   NUM_ROLLOUTS=8
-  ROLLOUT_BATCH_SIZE=128
-  GLOBAL_BATCH_SIZE=64
+  ROLLOUT_BATCH_SIZE=32
+  GLOBAL_BATCH_SIZE=32
   PADDING_FREE=false
   VAL_FREQ=-1
   VAL_BEFORE_TRAIN=false
-  KL_COEF=1.0e-2
+  KL_COEF=0.0
   WARMUP_RATIO=0.05
   MASK_NEGATIVE_ADVANTAGE=false
   ADAPTIVE_LR=false
-  SAVE_FREQ=5
+  SAVE_FREQ=15
+
+  LIMIT_IMAGES=10 # maximum number of full + cropped images for multiturn
+  MAX_ITERATIONS=6 # maximum multiturn iterations
 
   MICRO_BATCH_SIZE_PER_DEVICE_FOR_UPDATE=1
-  MICRO_BATCH_SIZE_PER_DEVICE_FOR_EXPERIENCE=1
-  MAX_PIXELS=2850000
+  MICRO_BATCH_SIZE_PER_DEVICE_FOR_EXPERIENCE=2
+  MAX_PIXELS=1000000
+  CROP_MAX_PIXELS=1000000
 fi
 
 if [ "$RUN_VAL_ONLY" == "true" ]; then
@@ -301,7 +307,7 @@ fi
 # export WANDB_MODE=disabled
 # #####
 
-HYPERPARAM_TAG="_mrl${MAX_RESPONSE_LENGTH}_lim${LIMIT_IMAGES}_cs${CROP_SIZE}_os${OFFSET}_kl${KL_COEF}_lr${LR}_wd${WEIGHT_DECAY}_fvt${FREEZE_VISION_TOWER}_rbs${ROLLOUT_BATCH_SIZE}_gbs${GLOBAL_BATCH_SIZE}_mgn${MAX_GRAD_NORM}_wr${WARMUP_RATIO}"
+HYPERPARAM_TAG="_mrl${MAX_RESPONSE_LENGTH}_maxite${MAX_ITERATIONS}_lim${LIMIT_IMAGES}_cs${CROP_SIZE}_os${OFFSET}_kl${KL_COEF}_lr${LR}_wd${WEIGHT_DECAY}_fvt${FREEZE_VISION_TOWER}_rbs${ROLLOUT_BATCH_SIZE}_gbs${GLOBAL_BATCH_SIZE}_mgn${MAX_GRAD_NORM}_wr${WARMUP_RATIO}"
 
 SAVE_TAG="${SAVE_TAG}_${HYPERPARAM_TAG}"
 
@@ -309,7 +315,7 @@ SAVE_TAG="${SAVE_TAG}_${HYPERPARAM_TAG}"
 SAVE_PATH=${SAVE_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}
 mkdir -p ${SAVE_PATH}
 
-LOG_PATH_BASE='/home/zhuyousong/yangfan/grounded-rl/nohup_log/train/rl'
+LOG_PATH_BASE='/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/nohup_log/train/rl'
 LOG_PATH="${LOG_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}.log"
 
 python3 -m verl.trainer.main \
@@ -349,6 +355,7 @@ python3 -m verl.trainer.main \
     worker.rollout.val_override_config.temperature=${VAL_OVERRIDE_TEMPERATURE} \
     worker.rollout.n=${NUM_ROLLOUTS} \
     worker.rollout.crop_size=${CROP_SIZE} \
+    worker.rollout.crop_max_pixels=${CROP_MAX_PIXELS} \
     worker.rollout.draw_dot=${ADD_DOT} \
     worker.rollout.offset=${OFFSET} \
     worker.rollout.max_generation_length_per_turn=${MAX_GENERATION_LENGTH_PER_TURN} \

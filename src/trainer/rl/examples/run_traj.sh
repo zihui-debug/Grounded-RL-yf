@@ -1,4 +1,10 @@
 #!/bin/bash
+export RAY_ADDRESS="ray://192.168.100.35:10001"
+
+
+export WANDB_MODE=online
+export WANDB_ENTITY="zhaosir"           # 你的 team 名
+export WANDB_PROJECT="Grounded-RL-yf"   # 你想创建的项目名
 
 RUN_VAL_ONLY=false
 
@@ -9,8 +15,8 @@ domain="traj" # web_grounding, vstar, spatial, web_action
 
 condition="vigorl" # vanilla_thinking, vigorl, vigorl_multiturn
 
-SAVE_PATH_BASE="/home/zhuyousong/yangfan/grounded-rl/checkpoints/rl"
-IMAGE_ROOT="/home/zhuyousong/yangfan/datasets/gsarch/vigorl_datasets"
+SAVE_PATH_BASE="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm"
+IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/gsarch/vigorl_datasets"
 
 NUM_GPUS=8 # number of gpus on node
 NNODES=2
@@ -25,7 +31,6 @@ MIN_PIXELS=3136
 MAX_PIXELS=4194304
 
 GROUP_BY_TASK=false
-export WANDB_MODE=offline
 export VLLM_NO_USAGE_STATS=1
 export DO_NOT_TRACK=1
 
@@ -104,7 +109,7 @@ elif [ "$domain" == "spatial" ]; then
 
     elif [ "$condition" == "vigorl" ]; then
 
-        MODEL_PATH="gsarch/ViGoRL-MCTS-SFT-3b-Spatial" # gsarch/ViGoRL-MCTS-SFT-7b-Spatial
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-sft-maxpixel12845056-lr2e-6_1001" # gsarch/ViGoRL-MCTS-SFT-7b-Spatial
         SYSTEM_PROMPT="./examples/format_prompt/sat2_grounded_thinking.jinja" # replace with the prompt for your dataset
         MODEL_TAG="vigorl_qwen2_5_vl_7b_sat2"
         REWARD_FUNCTION=./examples/reward_function/string_match_grounded_thinking.py:sat_compute_score
@@ -155,7 +160,7 @@ elif [ "$domain" == "traj" ]; then
 
     elif [ "$condition" == "vigorl" ]; then
 
-        MODEL_PATH="/home/zhuyousong/yangfan/grounded-rl/checkpoints/sft/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-refinebbox-sft-maxpixel12845056-lr2e-6_1004" 
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-gqa-vaw-spatial-negative-singleturn-sft-maxpixel12845056-lr2e-6_1001" 
         SYSTEM_PROMPT="" # replace with the prompt for your dataset
         MODEL_TAG="vigorl_qwen2_5_vl_7b_traj"
         REWARD_FUNCTION=./examples/reward_function/all_reward.py:compute_score
@@ -167,8 +172,8 @@ elif [ "$domain" == "traj" ]; then
 
     fi
 
-    train_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data.txt"
-    val_file="/home/zhuyousong/yangfan/grounded-rl/src/trainer/rl/examples/input_data_val.txt"
+    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_spatial.txt"
+    val_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_val_spatial.txt"
 
 fi
 
@@ -272,10 +277,11 @@ if [ "$RUN_VAL_ONLY" == "true" ]; then
   VAL_ONLY=true
   VAL_BEFORE_TRAIN=true
   # change this to the path to the checkpoint you want to load
-  load_checkpoint_path="${SAVE_PATH_BASE}/qwen2_5_vl_3b_full_sft_osatlas_multiturn_sft_train_OSATLAS_1260_HARD_SAMPLES_500_KEEP_RL__mrl4096_lim5_cs512_os50_kl1.0e-2_lr5.0e-7_wd1.0e-2_fvttrue_rbs64_gbs32_mgn0.2_wr0.05_20250424_095626/global_step_40"
+
+
+  load_checkpoint_path=""
   echo "LOADING CHECKPOINT FROM: ${load_checkpoint_path}"
   VAL_OVERRIDE_TEMPERATURE=0.2
-  export WANDB_MODE=disabled
 fi
 
 # ######
@@ -301,7 +307,7 @@ SAVE_TAG="${SAVE_TAG}_${HYPERPARAM_TAG}"
 SAVE_PATH=${SAVE_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}
 mkdir -p ${SAVE_PATH}
 
-LOG_PATH_BASE='/home/zhuyousong/yangfan/grounded-rl/nohup_log/train/rl'
+LOG_PATH_BASE='/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl'
 LOG_PATH="${LOG_PATH_BASE}/${SAVE_TAG}_${DATETIME}${EXPERIMENT_TAG}.log"
 
 python3 -m verl.trainer.main \
@@ -360,5 +366,4 @@ python3 -m verl.trainer.main \
     trainer.val_before_train=${VAL_BEFORE_TRAIN} \
     trainer.val_only=${VAL_ONLY} \
     trainer.load_checkpoint_path=${load_checkpoint_path} \
-    worker.actor.model.freeze_vision_tower=${FREEZE_VISION_TOWER} 2>&1 | tee ${LOG_PATH}
-    # trainer.load_checkpoint_path=${load_checkpoint_path}
+    2>&1 | awk '{ print strftime("[%Y-%m-%d %H:%M:%S]"), $0; fflush(); }' | stdbuf -oL tee ${LOG_PATH}

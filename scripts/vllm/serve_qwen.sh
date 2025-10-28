@@ -22,7 +22,7 @@ vllm serve $CHECKPOINT_PATH \
     --gpu-memory-utilization 0.9 \
     --tensor-parallel-size $NUM_GPUS \
     --uvicorn-log-level info \
-    --limit-mm-per-prompt "image=30" \
+    --limit-mm-per-prompt "image=100" \
     --mm-processor-kwargs '{"max_pixels":12960000,"min_pixels":4096}' \
     --api-key "qwen" > "vllm_logs/vllm_logfile_$(date '+%Y-%m-%d_%H-%M-%S').txt" 2>&1
 

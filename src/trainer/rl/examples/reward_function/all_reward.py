@@ -4,6 +4,7 @@ from mathruler.grader import grade_answer
 import numpy as np
 import ast
 import math
+import json
 
 def sat_format_reward(predict_str: str) -> float:
     # Check for proper format with think and answer tags
@@ -366,8 +367,8 @@ def string_match_multiturn_format_reward(predict_str: str) -> float:
             else:
                 if isinstance(coord[0], list):
                     for bbox in coord:
-                        if (not isinstance(box, list) or len(box) != 4 or
-                            not all(isinstance(x, int) for x in box)):
+                        if (not isinstance(bbox, list) or len(bbox) != 4 or
+                            not all(isinstance(x, int) for x in bbox)):
                             return 0.0
                 else:
                     if (not isinstance(coord, list) or len(coord) != 4 or
@@ -391,30 +392,338 @@ def string_match_multiturn_format_reward(predict_str: str) -> float:
     # 5) base reward + bonus for extra turns with sufficient diversity
     reward = 1.0
 
-    # # Count unique and sufficiently distant coordinates
-    # unique_coords = []
-    # for coord in previous_coords:
-    #     # Check if this coordinate is too close to any we've already counted
-    #     too_close = False
-    #     for existing_coord in unique_coords:
-    #         # Calculate Euclidean distance
-    #         distance = math.sqrt((coord[0] - existing_coord[0])**2 + 
-    #                              (coord[1] - existing_coord[1])**2)
-    #         if distance < min_distance_threshold:
-    #             too_close = True
-    #             break
-        
-    #     if not too_close:
-    #         unique_coords.append(coord)
+    # Count unique and sufficiently distant coordinates
+    def bbox_iou(box1, box2):
+        """计算两个bbox的IoU (x1, y1, x2, y2)"""
+        x1, y1, x2, y2 = box1
+        x1g, y1g, x2g, y2g = box2
+
+        inter_x1 = max(x1, x1g)
+        inter_y1 = max(y1, y1g)
+        inter_x2 = min(x2, x2g)
+        inter_y2 = min(y2, y2g)
+        inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
+
+        area1 = (x2 - x1) * (y2 - y1)
+        area2 = (x2g - x1g) * (y2g - y1g)
+        union_area = area1 + area2 - inter_area
+
+        return inter_area / union_area if union_area > 0 else 0
+
+
+    def count_unique_bboxes(previous_bboxes, iou_threshold=0.5, reward_per_box=0.2):
+        """
+        统计唯一且不重叠（IoU低于阈值）的bbox数量，并给予奖励
+        """
+        reward = 0
+        unique_bboxes = []
+
+        for bbox in previous_bboxes:
+            too_close = False
+            for existing_bbox in unique_bboxes:
+                iou = bbox_iou(bbox, existing_bbox)
+                if iou > iou_threshold:
+                    too_close = True
+                    break
+            
+            if not too_close:
+                unique_bboxes.append(bbox)
+
+        num_unique_turns = len(unique_bboxes)
+        if num_unique_turns > 1:
+            reward += reward_per_box * (num_unique_turns - 1)
+
+        return reward, unique_bboxes
     
-    # # Award bonus only for unique, sufficiently distant coordinates
+    # Award bonus only for unique, sufficiently distant coordinates
     # num_unique_turns = len(unique_coords)
     # if num_unique_turns > 1:
     #     reward += 0.2 * (num_unique_turns - 1)
+    bonus_reward, unique_bboxes = count_unique_bboxes(previous_coords)
+    # reward += bonus_reward
+
+    return reward
+
+
+def string_match_multiturn_format_reward_v2(predict_str: str) -> float:
+    s = predict_str.strip()
+    s = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", s, flags=re.DOTALL) # user轮里有特殊tag
+
+    # 1) must finish with </answer> (optionally followed by one EOS token)
+    if not re.search(r"</answer>\s*(<\|im_end\|>)?\s*$", s, re.DOTALL):
+        return 0.0
+
+    # 2) walk through the high‑level tag sequence to enforce grammar
+    tags_iter = _TAG_RE.finditer(s)
+    state = "think_open"            # expected next tag
+    for m in tags_iter:
+        tag = m.group(0).lower()
+
+        if state == "tool_open":
+            if tag != "<tool_call>":
+                return 0.0
+            state = "tool_close"
+
+        elif state == "tool_close":
+            if tag != "</tool_call>":
+                return 0.0
+            state = "think_open"
+
+        elif state == "obs_open":
+            if tag != "<observation>":
+                return 0.0
+            state = "obs_close"
+
+        elif state == "obs_close":
+            if tag != "</observation>":
+                return 0.0
+            state = "think_open"
+
+        elif state == "think_open":
+            if tag != "<think>":
+                return 0.0
+            state = "think_close"
+
+        elif state == "think_close":
+            if tag != "</think>":
+                return 0.0
+            state = "post_think"
+
+        elif state == "post_think":
+            if tag == "<tool_call>":
+                state = "tool_close"         # start another round
+            elif tag == "<answer>":
+                state = "answer_close"
+            else:
+                return 0.0
+
+        elif state == "answer_close":
+            if tag != "</answer>":
+                return 0.0
+            state = "end"
+
+        elif state == "end":
+            # no structural tags allowed after </answer>
+            return 0.0
+
+    if state != "end":
+        return 0.0   # we never saw a complete <answer> … </answer> block
+
+    # 3) validate each <tool_call> JSON and coordinate schema
+    # Also track unique coordinates for reward calculation
+    previous_coords = []
+    min_distance_threshold = 10  # Minimum distance in pixels between coordinates
+
+    tool_call_re = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
+    for tool_call_match in tool_call_re.finditer(s):
+        bbox_str = tool_call_match.group(1)
+        
+        bbox_str = bbox_str.strip()
+        # 匹配形如 (x1, y1, x2, y2) 或 [x1, y1, x2, y2] 的坐标
+        matches = re.findall(
+            r'[\(\[]\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*[\)\]]',
+            bbox_str
+        )
+        if not matches:
+            return 0.0
+    
+        for match in matches:
+            try:
+                coord = [int(match[0]), int(match[1]), int(match[2]), int(match[3])]
+                previous_coords.append(coord)
+            except ValueError:
+                return 0.0
+
+    # 4) validate final answer exists within answer tags
+    ans_match = re.search(r"<answer>\s*(.*?)\s*</answer>", s, re.DOTALL)
+    if not ans_match or not ans_match.group(1).strip():
+        return 0.0
+    
+    # 5) base reward + bonus for extra turns with sufficient diversity
+    reward = 1.0
+
+    # Count unique and sufficiently distant coordinates
+    def bbox_iou(box1, box2):
+        """计算两个bbox的IoU (x1, y1, x2, y2)"""
+        x1, y1, x2, y2 = box1
+        x1g, y1g, x2g, y2g = box2
+
+        inter_x1 = max(x1, x1g)
+        inter_y1 = max(y1, y1g)
+        inter_x2 = min(x2, x2g)
+        inter_y2 = min(y2, y2g)
+        inter_area = max(0, inter_x2 - inter_x1) * max(0, inter_y2 - inter_y1)
+
+        area1 = (x2 - x1) * (y2 - y1)
+        area2 = (x2g - x1g) * (y2g - y1g)
+        union_area = area1 + area2 - inter_area
+
+        return inter_area / union_area if union_area > 0 else 0
+
+
+    def count_unique_bboxes(previous_bboxes, iou_threshold=0.5, reward_per_box=0.2):
+        """
+        统计唯一且不重叠（IoU低于阈值）的bbox数量，并给予奖励
+        """
+        reward = 0
+        unique_bboxes = []
+
+        for bbox in previous_bboxes:
+            too_close = False
+            for existing_bbox in unique_bboxes:
+                iou = bbox_iou(bbox, existing_bbox)
+                if iou > iou_threshold:
+                    too_close = True
+                    break
+            
+            if not too_close:
+                unique_bboxes.append(bbox)
+
+        num_unique_turns = len(unique_bboxes)
+        if num_unique_turns > 1:
+            reward += reward_per_box * (num_unique_turns - 1)
+
+        return reward, unique_bboxes
+    
+    # Award bonus only for unique, sufficiently distant coordinates
+    # num_unique_turns = len(unique_coords)
+    # if num_unique_turns > 1:
+    #     reward += 0.2 * (num_unique_turns - 1)
+    bonus_reward, unique_bboxes = count_unique_bboxes(previous_coords)
+    # reward += bonus_reward
+
+    return reward
+
+def string_match_multiturn_format_reward_trajformat(predict_str: str) -> float:
+    s = predict_str.strip()
+    s = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", s, flags=re.DOTALL) # user轮里有特殊tag
+
+    # 1) must finish with </answer> (optionally followed by one EOS token)
+    if not re.search(r"</answer>\s*(<\|im_end\|>)?\s*$", s, re.DOTALL):
+        return 0.0
+
+    # 2) walk through the high‑level tag sequence to enforce grammar
+    tags_iter = _TAG_RE.finditer(s)
+    state = "think_open"            # expected next tag
+    for m in tags_iter:
+        tag = m.group(0).lower()
+
+        if state == "tool_open":
+            if tag != "<tool_call>":
+                return 0.0
+            state = "tool_close"
+
+        elif state == "tool_close":
+            if tag != "</tool_call>":
+                return 0.0
+            state = "think_open"
+
+        elif state == "obs_open":
+            if tag != "<observation>":
+                return 0.0
+            state = "obs_close"
+
+        elif state == "obs_close":
+            if tag != "</observation>":
+                return 0.0
+            state = "think_open"
+
+        elif state == "think_open":
+            if tag != "<think>":
+                return 0.0
+            state = "think_close"
+
+        elif state == "think_close":
+            if tag != "</think>":
+                return 0.0
+            state = "post_think"
+
+        elif state == "post_think":
+            if tag == "<tool_call>":
+                state = "tool_close"         # start another round
+            elif tag == "<answer>":
+                state = "answer_close"
+            else:
+                return 0.0
+
+        elif state == "answer_close":
+            if tag != "</answer>":
+                return 0.0
+            state = "end"
+
+        elif state == "end":
+            # no structural tags allowed after </answer>
+            return 0.0
+
+    if state != "end":
+        return 0.0   # we never saw a complete <answer> … </answer> block
+
+    # 3) validate each <tool_call> JSON and coordinate schema
+    # Also track unique coordinates for reward calculation
+
+    def traj_bbox_format(s: str) -> float:
+        """
+        计算奖励值：
+        - <tool_call> 必须包含至少一个合法的 bbox；
+        - <think> 可以没有轨迹点，但若存在，必须格式正确；
+        - 全部合法时返回 1.0，否则返回 0.0。
+        """
+        # 匹配 <think> 和 <tool_call> 块
+        think_re = re.compile(r"<think>(.*?)</think>", re.DOTALL)
+        tool_re = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
+
+        think_matches = think_re.findall(s)
+        tool_matches = tool_re.findall(s)
+
+        # 匹配 bbox: (x1, y1, x2, y2) 或 [x1, y1, x2, y2]
+        bbox_pattern = re.compile(
+            r'[\(\[]\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*[\)\]]'
+        )
+        # 匹配轨迹点: (x, y) 或 [x, y]
+        point_pattern = re.compile(
+            r'[\(\[]\s*(-?\d+)\s*,\s*(-?\d+)\s*[\)\]]'
+        )
+
+        # 检查 <tool_call> 块
+        tool_valid = any(bbox_pattern.search(tool_str) for tool_str in tool_matches)
+        if not tool_valid:
+            return 0.0
+
+        # 检查 think 中的所有括号对：只允许 (x,y) 或 [x,y]（恰好两位整数）
+        # 如果 think 中没有括号也没问题（允许没有轨迹点）
+        bracket_iter = re.finditer(r'([\(\[])(.*?)?([\)\]])', '\n'.join(think_matches), re.DOTALL)
+        for bm in bracket_iter:
+            open_b, content, close_b = bm.group(1), bm.group(2), bm.group(3)
+            if content is None:
+                continue
+            content = content.strip()
+            # 检查是否为两个整数（点）
+            if re.match(r'^\s*-?\d+\s*,\s*-?\d+\s*$', content):
+                continue  # 合法点
+            # 若想允许 think 中出现 bbox（4 个数），可以取消下面注释：
+            # elif re.match(r'^\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*$', content):
+            #     continue  # 合法 bbox（如果需允许）
+            else:
+                # 出现其他形式的括号内容，视为不合法
+                return 0.0
+
+        return 1.0
+    
+    if traj_bbox_format(s) == 0.0:
+        return 0.0
+
+    # 4) validate final answer exists within answer tags
+    ans_match = re.search(r"<answer>\s*(.*?)\s*</answer>", s, re.DOTALL)
+    if not ans_match or not ans_match.group(1).strip():
+        return 0.0
+    
+    # 5) base reward + bonus for extra turns with sufficient diversity
+    reward = 1.0
 
     return reward
 
 def string_match_multiturn_accuracy_reward(pred_ans: str, gt_ans: str) -> float:
+    pred_ans = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", pred_ans, flags=re.DOTALL) # user轮里有特殊tag
     # Extract content from answer tags if present
     m = re.search(r"<answer>\s*(.*?)\s*</answer>", pred_ans, re.DOTALL | re.IGNORECASE)
     pred = m.group(1).strip().lower() if m else pred_ans.strip().lower()
@@ -423,7 +732,16 @@ def string_match_multiturn_accuracy_reward(pred_ans: str, gt_ans: str) -> float:
     return 1.0 if pred == gt else 0.0
 
 def string_match_multiturn_compute_score(predict_str: str, ground_truth: str) -> float:
-    format = string_match_multiturn_format_reward(predict_str)
+    format = string_match_multiturn_format_reward_v2(predict_str)
+    accuracy = string_match_multiturn_accuracy_reward(predict_str, ground_truth)
+    return {
+        "overall": 0.6 * accuracy + 0.4 * format,
+        "format": format,
+        "accuracy": accuracy,
+    }
+
+def string_match_multiturn_trajformat_compute_score(predict_str: str, ground_truth: str) -> float:
+    format = string_match_multiturn_format_reward_v2(predict_str)
     accuracy = string_match_multiturn_accuracy_reward(predict_str, ground_truth)
     return {
         "overall": 0.6 * accuracy + 0.4 * format,
@@ -444,5 +762,7 @@ def compute_score(predict_str: str, ground_truth: str) -> dict:
         return web_action_compute_score(predict_str, ground_truth)
     elif task_type == "vstar_multiturn":
         return string_match_multiturn_compute_score(predict_str, ground_truth)
+    elif task_type == "vstar_multiturn_trajformat":
+        return string_match_multiturn_trajformat_compute_score(predict_str, ground_truth)
     else:
         raise ValueError(f"Unknown task type: {task_type}")

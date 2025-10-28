@@ -1,0 +1,7 @@
+def observation_template(**kwargs):
+    iteration = kwargs.get("iteration", "")
+    return f"""\n<|im_start|>user\nAfter the above Action {iteration}, here is the the zoom-in image (Observation {iteration+1}):\n<|vision_start|><|image_pad|><|vision_end|>.\nContinue your reasoning process inside <think> and </think>. If needed, you can continue to zoom in on the original image or any of the observations, by outputting <tool_call> and </tool_call> as before. If the final answer is confirmed, put your final answer inside <answer> and </answer>.<|im_end|>\n<|im_start|>assistant\n"""
+
+def final_observation_template(**kwargs):
+    iteration = kwargs.get("iteration", "")
+    return f"""\n<|im_start|>user\nAfter the above Action {iteration}, here is the the zoom-in image (Observation {iteration+1}):\n<|vision_start|><|image_pad|><|vision_end|>.\nContinue your reasoning process inside <think> and </think>. If needed, you can continue to zoom in on the original image or any of the observations, by outputting <tool_call> and </tool_call> as before. If the final answer is confirmed, put your final answer inside <answer> and </answer>.<|im_end|>\n<|im_start|>assistant\n<think>\nBased on all the regions I've examined, I can now provide my final answer.\n</think>\n<answer>"""

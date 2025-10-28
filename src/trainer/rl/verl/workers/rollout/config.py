@@ -48,6 +48,7 @@ class RolloutConfig:
     max_pixels: int = 4194304
     min_pixels: int = 262144
     crop_size: int = 512
+    crop_max_pixels: int = 1000000
     draw_dot: bool = True
     offset: int = 50
     stop_strings: Optional[str] = None
