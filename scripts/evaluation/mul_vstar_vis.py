@@ -175,7 +175,8 @@ def visualize_reasoning_full(save_info, pil_img, question, step_records, final_a
     os.makedirs(save_path, exist_ok=True)
 
     num_tool_calls = sum(1 for step in step_records if step.get("tool_call"))
-    num_subplots = 2 + 2 * num_tool_calls + 1  # 原图+问题 + 每轮推理 + Final Step
+    # 1 for original image + len(step_records) for reasoning text + num_tool_calls for cropped images + 1 for final step
+    num_subplots = 2 + len(step_records) + num_tool_calls
 
     fig, axs = plt.subplots(num_subplots, 1, figsize=(10, num_subplots * 4), constrained_layout=True)
     idx = 0
@@ -299,7 +300,18 @@ def main(json_file, save_path):
                     bbox_data = [bbox_data]
 
                 for bbox in bbox_data:
-                    x1, y1, x2, y2 = map(int, bbox)
+                    # 验证bbox格式
+                    if len(bbox) == 2 and isinstance(bbox[0], (list, tuple)) and isinstance(bbox[1], (list, tuple)):
+                        # 格式为 [[x1, y1], [x2, y2]]，转换为 [x1, y1, x2, y2]
+                        x1, y1 = map(int, bbox[0])
+                        x2, y2 = map(int, bbox[1])
+                    elif len(bbox) == 4:
+                        # 标准格式 [x1, y1, x2, y2]
+                        x1, y1, x2, y2 = map(int, bbox)
+                    else:
+                        print(f"⚠️ 跳过无效的bbox格式: {bbox} (长度: {len(bbox)})")
+                        continue
+
                     record["bboxes"].append([x1, y1, x2, y2])
                     cropped_img = pil_img.crop((x1, y1, x2, y2))
                     record["cropped_imgs"].append(cropped_img)
@@ -332,4 +344,38 @@ if __name__ == "__main__":
 
     rl_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/output_reasoning_rl_wrong.json"
     save_path_rl = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize_results_rl_wrong"
-    out_path_rl = main(rl_wrong_reasoning_json, save_path_rl)
+    # out_path_rl = main(rl_wrong_reasoning_json, save_path_rl)
+
+    # sft_minio3_correct_v2_wrong_correct_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_correct_v2_wrong_correct.json"
+    # sft_minio3_correct_v2_wrong_correct_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_vs_v2/minio3_correct_v2_wrong_correct"
+    # main(sft_minio3_correct_v2_wrong_correct_json, sft_minio3_correct_v2_wrong_correct_visualize_dir)
+
+    # sft_minio3_correct_v2_wrong_wrong_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_correct_v2_wrong_wrong.json"
+    # sft_minio3_correct_v2_wrong_wrong_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_vs_v2/minio3_correct_v2_wrong_wrong"
+    # main(sft_minio3_correct_v2_wrong_wrong_json, sft_minio3_correct_v2_wrong_wrong_visualize_dir)
+
+    # sft_minio3_wrong_v2_correct_correct_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_wrong_v2_correct_correct.json"
+    # sft_minio3_wrong_v2_correct_correct_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_vs_v2/minio3_wrong_v2_correct_correct"
+    # main(sft_minio3_wrong_v2_correct_correct_json, sft_minio3_wrong_v2_correct_correct_visualize_dir)
+
+    # sft_minio3_wrong_v2_correct_wrong_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_wrong_v2_correct_wrong.json"
+    # sft_minio3_wrong_v2_correct_wrong_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_vs_v2/minio3_wrong_v2_correct_wrong"
+    # main(sft_minio3_wrong_v2_correct_wrong_json, sft_minio3_wrong_v2_correct_wrong_visualize_dir)
+
+
+    # ----------可视化chatgpt前后结果不一致的样本------------------
+    sft_v4_correct_v9_wrong_correct_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_correct_v2_wrong_correct.json"
+    sft_v4_correct_v9_wrong_correct_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_v4_vs_v9/minio3_correct_v2_wrong_correct"
+    # main(sft_v4_correct_v9_wrong_correct_json, sft_v4_correct_v9_wrong_correct_visualize_dir)
+
+    sft_v4_correct_v9_wrong_wrong_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_correct_v2_wrong_wrong.json"
+    sft_v4_correct_v9_wrong_wrong_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_v4_vs_v9/minio3_correct_v2_wrong_wrong"
+    # main(sft_v4_correct_v9_wrong_wrong_json, sft_v4_correct_v9_wrong_wrong_visualize_dir)
+
+    sft_v4_wrong_v9_correct_correct_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_wrong_v2_correct_correct.json"
+    sft_v4_wrong_v9_correct_correct_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_v4_vs_v9/minio3_wrong_v2_correct_correct"
+    main(sft_v4_wrong_v9_correct_correct_json, sft_v4_wrong_v9_correct_correct_visualize_dir)
+
+    sft_v4_wrong_v9_correct_wrong_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_wrong_v2_correct_wrong.json"
+    sft_v4_wrong_v9_correct_wrong_visualize_dir = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/visualize/minio3_v4_vs_v9/minio3_wrong_v2_correct_wrong"
+    main(sft_v4_wrong_v9_correct_wrong_json, sft_v4_wrong_v9_correct_wrong_visualize_dir)

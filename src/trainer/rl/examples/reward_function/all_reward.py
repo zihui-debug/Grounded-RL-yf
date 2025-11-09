@@ -452,6 +452,16 @@ def string_match_multiturn_format_reward_v2(predict_str: str) -> float:
     # 1) must finish with </answer> (optionally followed by one EOS token)
     if not re.search(r"</answer>\s*(<\|im_end\|>)?\s*$", s, re.DOTALL):
         return 0.0
+    
+    # 一定要有<tool_call>标签
+    if not re.search(r"<tool_call>.*?</tool_call>", s, re.DOTALL):
+        return 0.0
+    
+    # assistant轮里必须有<think>或者<answer>标签
+    assistant_blocks = re.split(r"assistant\s*\n", s)
+    for i, block in enumerate(assistant_blocks):
+        if not re.search(r"<think>.*?</think>|<answer>.*?</answer>", block, re.DOTALL):
+            return 0.0
 
     # 2) walk through the high‑level tag sequence to enforce grammar
     tags_iter = _TAG_RE.finditer(s)
@@ -594,6 +604,12 @@ def string_match_multiturn_format_reward_v2(predict_str: str) -> float:
 
     return reward
 
+def count_toolcall_tags(predict_str: str) -> int:
+    s = predict_str.strip()
+    s = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", s, flags=re.DOTALL) # user轮里有特殊tag
+    tool_call_tags = re.findall(r"<tool_call>.*?</tool_call>", s, re.DOTALL)
+    return len(tool_call_tags)
+
 def string_match_multiturn_format_reward_trajformat(predict_str: str) -> float:
     s = predict_str.strip()
     s = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", s, flags=re.DOTALL) # user轮里有特殊tag
@@ -722,22 +738,154 @@ def string_match_multiturn_format_reward_trajformat(predict_str: str) -> float:
 
     return reward
 
-def string_match_multiturn_accuracy_reward(pred_ans: str, gt_ans: str) -> float:
+def _remove_punctuation_spaces(ans: str) -> str:
+
+    """
+    Removes punctuation from the answer and leading and trailing spaces.
+    
+    INPUTS:
+    - ans: The answer.
+    
+    OUTPUTS:
+    - ans_filtered: The answer without punctuation.
+    
+    """
+
+    #remove any spaces 
+    ans = ans.strip()
+
+    #remove any punctuation marks
+    ans_filtered = ans.replace(".", "")
+    ans_filtered = ans_filtered.replace("?", "")
+    ans_filtered = ans_filtered.replace("!", "")
+    ans_filtered = ans_filtered.replace(",", "")
+    ans_filtered = ans_filtered.replace(";", "")
+    ans_filtered = ans_filtered.replace(":", "")
+    ans_filtered = ans_filtered.replace("'", "")
+    ans_filtered = ans_filtered.replace('"', "")
+    ans_filtered = ans_filtered.replace("(", "")
+    ans_filtered = ans_filtered.replace(")", "")
+    ans_filtered = ans_filtered.replace("[", "")
+    ans_filtered = ans_filtered.replace("]", "")
+    ans_filtered = ans_filtered.replace("{", "")
+    ans_filtered = ans_filtered.replace("}", "")
+    ans_filtered = ans_filtered.replace("<", "")
+    ans_filtered = ans_filtered.replace(">", "")
+    ans_filtered = ans_filtered.replace("/", "")
+    ans_filtered = ans_filtered.replace("\\", "")
+    ans_filtered = ans_filtered.replace("|", "")
+    ans_filtered = ans_filtered.replace("=", "")
+    ans_filtered = ans_filtered.replace("+", "")
+    ans_filtered = ans_filtered.replace("-", "")
+    ans_filtered = ans_filtered.replace("_", "")
+    ans_filtered = ans_filtered.replace("*", "")
+    ans_filtered = ans_filtered.replace("&", "")
+    ans_filtered = ans_filtered.replace("^", "")
+    ans_filtered = ans_filtered.replace("%", "")
+    ans_filtered = ans_filtered.replace("$", "")
+    ans_filtered = ans_filtered.replace("#", "")
+    ans_filtered = ans_filtered.replace("@", "")
+    ans_filtered = ans_filtered.replace("`", "")
+    ans_filtered = ans_filtered.replace("~", "")
+    ans_filtered = ans_filtered.replace(" ", "")
+    ans_filtered = ans_filtered.strip()
+    ans_filtered = ans_filtered.lower()
+
+    return ans_filtered
+
+def _string_matching(gt_ans: str, pred_ans: str, question: str = None) -> float:
+    """
+    Enhanced string matcher that compares the ground truth and predicted answer,
+    handling the following cases:
+      - Predicted answer may be a letter choice (e.g., "A", "B.")
+      - Predicted answer may be "A. right" or "A) right"
+      - Predicted answer may be just the text ("right")
+    If the prediction is a letter, it will look up the corresponding option text from the question.
+
+    Args:
+        gt_ans (str): ground truth answer (text only, e.g. "right" or "A")
+        pred_ans (str): model's predicted answer (may be letter or text)
+        question (str): question string containing "Answer Choices" section
+
+    Returns:
+        float: 1.0 if correct, else 0.0
+    """
+    if not isinstance(pred_ans, str) or not isinstance(gt_ans, str):
+        return 0.0
+
+    # Clean up and normalize
+    gt_ans_clean = _remove_punctuation_spaces(gt_ans).lower()
+    pred_ans_clean = pred_ans.strip().lower()
+
+    # --- Step 1: If gt_ans is a letter, map it to the corresponding text ---
+    if gt_ans_clean.isalpha() and question:
+        # Extract options like "A. right", "B. left" from the question string
+        choice_map = {}
+        matches = re.findall(
+            r"([A-Z])[\.\)]\s*([^\n]+)",
+            question,
+            flags=re.MULTILINE
+        )
+        choice_map = {m[0].upper(): _remove_punctuation_spaces(m[1]).lower() for m in matches}
+        
+        # Map the letter to the corresponding option text
+        gt_ans_clean = choice_map.get(gt_ans_clean.upper(), gt_ans_clean)
+
+    # --- Step 2: Try to extract (letter, text) from prediction ---
+    match = re.match(r"^\s*([A-Za-z])[.)]\s*(.*)$", pred_ans_clean)
+    if match:
+        letter = match.group(1).upper()
+        after_text = match.group(2).strip().lower()
+    else:
+        letter, after_text = pred_ans_clean.upper(), pred_ans_clean.lower()
+
+    # --- Step 3: Parse choices from the question ---
+    choice_map = {}
+    if question:
+        # Extract options like "A. right", "B. left" from the question string
+        matches = re.findall(
+            # r"([A-Z])[\.\)]\s*([^\n]+?)(?=\s+[A-Z][\.\)]|\Z)",
+            r"([A-Z])[\.\)]\s*([^\n]+)",
+            question,
+            flags=re.MULTILINE
+        )
+        choice_map = {m[0].upper(): _remove_punctuation_spaces(m[1]).lower() for m in matches}
+
+    # --- Step 4: Resolve predicted text ---
+    if letter and letter in choice_map:
+        pred_text = choice_map[letter].lower()
+    elif after_text:
+        pred_text = _remove_punctuation_spaces(after_text).lower()
+    else:
+        pred_text = _remove_punctuation_spaces(pred_ans_clean).lower()
+
+    # --- Step 5: Compare clean text ---
+    # if pred_text == gt_ans_clean or gt_ans_clean in pred_text:
+    if pred_text == gt_ans_clean:
+        return 1.0
+    else:
+        return 0.0
+
+def string_match_multiturn_accuracy_reward(pred_ans: str, gt_ans: str, problem: str) -> float:
     pred_ans = re.sub(r"user\s*\n.*?(?=assistant\s*\n|$)", "", pred_ans, flags=re.DOTALL) # user轮里有特殊tag
     # Extract content from answer tags if present
     m = re.search(r"<answer>\s*(.*?)\s*</answer>", pred_ans, re.DOTALL | re.IGNORECASE)
-    pred = m.group(1).strip().lower() if m else pred_ans.strip().lower()
-    gt = gt_ans.strip().lower()
+    # pred = m.group(1).strip().lower() if m else pred_ans.strip().lower()
+    # gt = gt_ans.strip().lower()
 
-    return 1.0 if pred == gt else 0.0
+    # return 1.0 if pred == gt else 0.0
+    score = _string_matching(gt_ans, m.group(1).strip() if m else pred_ans.strip(), problem)
+    return score
 
-def string_match_multiturn_compute_score(predict_str: str, ground_truth: str) -> float:
+def string_match_multiturn_compute_score(predict_str: str, ground_truth: str, problem: str) -> float:
     format = string_match_multiturn_format_reward_v2(predict_str)
-    accuracy = string_match_multiturn_accuracy_reward(predict_str, ground_truth)
+    accuracy = string_match_multiturn_accuracy_reward(predict_str, ground_truth, problem)
+    toolcall_cnt = count_toolcall_tags(predict_str)
     return {
         "overall": 0.6 * accuracy + 0.4 * format,
         "format": format,
         "accuracy": accuracy,
+        "toolcall_count": toolcall_cnt,
     }
 
 def string_match_multiturn_trajformat_compute_score(predict_str: str, ground_truth: str) -> float:
@@ -750,7 +898,7 @@ def string_match_multiturn_trajformat_compute_score(predict_str: str, ground_tru
     }
 
 
-def compute_score(predict_str: str, ground_truth: str) -> dict:
+def compute_score(predict_str: str, ground_truth: str, problem: str) -> dict:
     task_type = ground_truth["task_type"]
     ground_truth = ground_truth["answer"]
     
@@ -761,7 +909,7 @@ def compute_score(predict_str: str, ground_truth: str) -> dict:
     elif task_type == "webaction":
         return web_action_compute_score(predict_str, ground_truth)
     elif task_type == "vstar_multiturn":
-        return string_match_multiturn_compute_score(predict_str, ground_truth)
+        return string_match_multiturn_compute_score(predict_str, ground_truth, problem)
     elif task_type == "vstar_multiturn_trajformat":
         return string_match_multiturn_trajformat_compute_score(predict_str, ground_truth)
     else:

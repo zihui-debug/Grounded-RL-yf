@@ -65,7 +65,7 @@ class FunctionRewardManager:
     def compute_reward(self, data: DataProto) -> Tuple[torch.Tensor, Dict[str, List[float]]]:
         reward_tensor = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
         reward_metrics = defaultdict(list)
-        print_first_n = 5
+        print_first_n = 32
         for i in range(len(data)):
             data_item = data[i]  # DataProtoItem
             response_ids = data_item.batch["responses"]
@@ -79,11 +79,13 @@ class FunctionRewardManager:
                 valid_response_ids, skip_special_tokens=self.config.skip_special_tokens
             )
             ground_truth = data_item.non_tensor_batch["ground_truth"]
+            problem = data_item.non_tensor_batch["problem"]
 
-            score = self.reward_fn(response_str, ground_truth)
+            score = self.reward_fn(response_str, ground_truth, problem)
 
             if i < print_first_n:
                 print(f"response_str: {response_str}; score: {score}")
+                print(f"Problem: {problem}")
                 print(f"Ground truth: {ground_truth}")
             
             # print(f"response_str: {response_str}; valid_response_length: {valid_response_length}; score: {score}")

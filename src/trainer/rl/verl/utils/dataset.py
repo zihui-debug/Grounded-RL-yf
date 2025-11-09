@@ -277,10 +277,14 @@ class RLHFDataset(Dataset, ImageProcessMixin):
             with open(data_path, "r", encoding="utf-8") as f:
                 lines = [l.strip() for l in f if l.strip()]
             for line in lines:
-                task_type, path = [x.strip() for x in line.split("&")]
-                dataset = self._load_single_dataset(path)
-                # 给 dataset 增加一个 "task_type" 字段
-                dataset = dataset.add_column("task_type", [task_type] * len(dataset))
+                if line.count("&") == 1:
+                    task_type, path = [x.strip() for x in line.split("&")]
+                    dataset = self._load_single_dataset(path)
+                    # 给 dataset 增加一个 "task_type" 字段
+                    dataset = dataset.add_column("task_type", [task_type] * len(dataset))
+                else:
+                    raise ValueError(f"Each line in txt should contain one '&' to separate task_type and data_path, but got: {line}")
+                    
                 all_datasets.append(dataset)
 
             # 合并多个子数据集
@@ -419,4 +423,5 @@ class RLHFDataset(Dataset, ImageProcessMixin):
         example["position_ids"] = position_ids
         example["raw_prompt_ids"] = raw_prompt_ids
         example["ground_truth"] = example.pop(self.answer_key)
+        example["problem"] = example.pop(self.prompt_key)
         return example

@@ -753,5 +753,85 @@
       "assistant_tag": "assistant",
       "system_tag": "system"
     }
+  },
+
+    "minio3_coldstart": {
+    "file_name": "/home/zhaochaoyang/yangfan/dataset/ThinkwithImage/Mini-o3-Coldstart-Dataset-json/Mini-o3-Coldstart.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt",
+      "system_tag": "system"
+    }
+  },
+
+  "our_minio3format": {
+    "file_name": "/home/zhaochaoyang/yangfan/dataset/ThinkwithImage/multi_turn_conversation_dataset_minio3_v7_optimized_all_merged_modifypath.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt",
+      "system_tag": "system"
+    }
+  },
+
+  "our_minio3format_nopolish": {
+    "file_name": "/home/zhaochaoyang/yangfan/dataset/ThinkwithImage/multi_turn_conversation_dataset_minio3_v4_optimized_all_merged_minio3_format_modifypath.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt",
+      "system_tag": "system"
+    }
+  },
+
+  "our_minio3format_7k": {
+    "file_name": "/home/zhaochaoyang/yangfan/dataset/ThinkwithImage/multi_turn_conversation_dataset_all_v12_optimized_merged_minio3_format_modifypath.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt",
+      "system_tag": "system"
+    }
+  },
+
+  "our_minio3format_7k_absolute": {
+    "file_name": "/home/zhaochaoyang/yangfan/dataset/ThinkwithImage/multi_turn_conversation_dataset_all_v12_optimized_merged_minio3_format_output_absolute_modifypath_resized_min40000_max2000000.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt",
+      "system_tag": "system"
+    }
   }
 }

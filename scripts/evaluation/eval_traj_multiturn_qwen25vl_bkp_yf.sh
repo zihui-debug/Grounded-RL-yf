@@ -2,7 +2,7 @@
 
 # VLLM number of GPUs
 NUM_GPUS=1 # number of GPUs to use for vllm
-NUM_PROCESSES=10 # number of processes to run in parallel
+NUM_PROCESSES=1 # number of processes to run in parallel
 SEED=42 # random seed
 N_ROLLOUTS=1 # number of rollouts to run per prompt
 TEMPERATURE=0.5 # temperature for the rollouts
@@ -71,11 +71,8 @@ elif [ "$eval_type" == "traj_vstar" ]; then
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v11_v2-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1106"
     # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_nopolish"
     # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_7k"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-our_minio3_format_3k-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v4-optimized-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
-    MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_7k_absolute"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b-full-our_minio3format_7k/full/our_minio3format_7k_absolute"
-    MODEL_TAG="sft-qwen2_5vl-7b-full-our_minio3format_7k_absolute"
+    MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-our_minio3_format_3k-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
+    MODEL_TAG="Qwen2.5-VL-7B-Instruct-our_minio3_format_3k-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
 
     CROP_SIZE=512 # 不起作用，py里直接用bbox大小
     CROP_OFFSET=0

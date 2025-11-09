@@ -398,7 +398,8 @@ class Qwen2_5_VL_Traj():
                             {
                                 "role": "user",
                                 "content": [
-                                    {"type": "image", "image": f"data:image/jpeg;base64,{base64_string}", "max_pixels": self.max_pixels, "min_pixels": self.min_pixels},
+                                    # {"type": "image", "image": f"data:image/jpeg;base64,{base64_string}", "max_pixels": self.max_pixels, "min_pixels": self.min_pixels},
+                                    {"type": "image", "image": maybe_image, "max_pixels": self.max_pixels, "min_pixels": self.min_pixels},
                                     # {"type": "image", "image": f"data:image/jpeg;base64,{base64_string}"},
                                     {"type": "text", "text": text_str}
                                 ]
@@ -412,11 +413,15 @@ class Qwen2_5_VL_Traj():
                             #     text_str = f"<observation>\nHere is the crop of the image showing {len(base64_string)} regions:"
                             # else:
                             #     text_str = "<observation>\nHere is the crop of the image showing the region:"
-                            text_str_before_image = f"""After the above Action {thought_idx}, here is the the zoom-in image (Observation {thought_idx+1}):\n"""
+                            text_str_before_image = f"""After the above Action {thought_idx-1}, here is the the zoom-in image (Observation {thought_idx}):\n"""
                             text_str_after_image = f""".\nContinue your reasoning process inside <think> and </think>. If needed, you can continue to zoom in on the original image or any of the observations, by outputting <tool_call> and </tool_call> as before. If the final answer is confirmed, put your final answer inside <answer> and </answer>."""
+                            if not isinstance(maybe_image, list):
+                                maybe_image = [maybe_image]
                             image_content = [
-                                {"type": "image", "image": f"data:image/jpeg;base64,{b64}"
-                                } for b64 in base64_string
+                                # {"type": "image", "image": f"data:image/jpeg;base64,{b64}"
+                                # } for b64 in base64_string
+                                {"type": "image", "image": img
+                                } for img in maybe_image
                             ]
                             messages.append(
                                 {
@@ -462,6 +467,7 @@ class Qwen2_5_VL_Traj():
             temperature = self.temperature
 
         conversations = [messages]
+        print(conversations)
 
         # Convert conversation to text that Qwen2-VL uses, while also extracting image/video
         texts = [self.processor.apply_chat_template(conv, tokenize=False, add_generation_prompt=add_generation_prompt, continue_final_message=continue_final_message) 

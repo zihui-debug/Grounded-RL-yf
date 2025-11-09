@@ -17,6 +17,7 @@ from qwen_vl_utils import fetch_image
 from PIL import ImageDraw
 import json
 TOOL_RE   = re.compile(r"<tool_call>(.*?)</tool_call>", re.DOTALL)
+GROUNDING_RE = re.compile(r"<grounding>(.*?)</grounding>", re.DOTALL)
 def _parse_coordinate(text: str):
     """
     Extract a coordinate from text of the form '(x, y)'.
@@ -38,6 +39,18 @@ def _parse_bbox_coordinate_json(text: str):
         text = text.strip()
         json_text = json.loads(text)
         return json_text["arguments"]["bbox"]
+    except Exception as e:
+        return None
+    
+def _parse_bbox_coordinate_json_minio3_format(text: str):
+    """
+    Extract a coordinate from text of the form '(x, y)'.
+    Returns (x, y) as a tuple of ints if found, otherwise None.
+    """
+    try:
+        text = text.strip()
+        json_text = json.loads(text)
+        return json_text["bbox_2d"]
     except Exception as e:
         return None
     
@@ -109,6 +122,14 @@ def _get_bbox_crop(image: Image.Image, bbox: List[int], offset: int = 0, crop_si
     Also draws a rectangle at the bbox location within the crop.
     """
     x1, y1, x2, y2 = bbox
+    # 支持0-1归一化坐标
+    if x1 <= 1 and y1 <= 1 and x2 <= 1 and y2 <= 1:
+        width, height = image.size
+        x1 = int(x1 * width)
+        y1 = int(y1 * height)
+        x2 = int(x2 * width)
+        y2 = int(y2 * height)
+        
     width, height = image.size
 
     # Ensure crop boundaries are within image dimensions
@@ -170,6 +191,27 @@ def check_for_crop_single(text: str, image: Image.Image, offset: int = 50, crop_
     m = TOOL_RE.search(text)
     if m:
         coord = _parse_bbox_coordinate(m.group(1))
+        try:
+            # crop = _get_point_crop(image, coord, offset=offset, crop_size=crop_size, draw_dot=draw_dot)
+            if isinstance(coord[0], list):
+                # multiple bboxes
+                crops = []
+                for single_bbox in coord:
+                    crop = _get_bbox_crop(image, single_bbox, offset=0, crop_size=crop_size, draw_dot=draw_dot)
+                    crops.append(crop)
+            else:
+                crop = _get_bbox_crop(image, coord, offset=0, crop_size=crop_size, draw_dot=draw_dot)
+                crops = [crop]
+            # print(f"------------------------get {len(crops)} crops---------------------")
+            return crops
+        except Exception as e:
+            return None
+    return None
+
+def check_for_crop_minio3_format(text: str, image: Image.Image, offset: int = 50, crop_size: int = 512, draw_dot: bool = True) -> Optional[Image.Image]:
+    m = GROUNDING_RE.search(text)
+    if m:
+        coord = _parse_bbox_coordinate_json_minio3_format(m.group(1))
         try:
             # crop = _get_point_crop(image, coord, offset=offset, crop_size=crop_size, draw_dot=draw_dot)
             if isinstance(coord[0], list):
@@ -301,7 +343,7 @@ class SinglePathRollouts_Traj:
 
         Returns the final answer from the last terminal node found, or a fallback if none found.
         """
-
+        # import ipdb;ipdb.set_trace()
         if self.add_thought_number_system_prompt:
             to_add = f" There should be atleast {np.random.randint(3, 8)} thoughts before providing the final answer."
             system_prompt = self.system_prompt + to_add
@@ -591,7 +633,7 @@ class SinglePathRollouts_Traj:
                 # Create a new child node for the next thought
                 child_node = TreeNode(thought_text=next_text, parent=current_node)
                 if self.check_for_crop:
-                    crop = check_for_crop(next_text, root.image, self.crop_offset, self.crop_size, draw_dot=self.draw_dot)
+                    crop = check_for_crop_minio3_format(next_text, root.image, self.crop_offset, self.crop_size, draw_dot=self.draw_dot)
                     if crop is not None:
                         child_node.image = crop
                 current_node.add_child(child_node)

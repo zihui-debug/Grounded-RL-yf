@@ -76,8 +76,28 @@ def convert_thoughts_to_reasoning_jsonl(input_jsonl_path, output_json_path, crop
                         print(f"[Warning] Failed to parse bbox JSON: {bbox_str}")
                         step["answer"] = final_answer
                 else:
-                    # 没有 bbox 且是最后一步 → 说明是最终答案
-                    step["answer"] = final_answer
+                    bbox_match = re.search(r"<tool_call>\s*(\[[^\]]+\])\s*</tool_call>", thought)
+                    if bbox_match:
+                        bbox_str = bbox_match.group(1)
+                        try:
+                            # 尝试解析为 Python 对象（支持单个或多个 bbox）
+                            bbox_data = json.loads(bbox_str)
+
+                            # 如果是单个 bbox（如 [10, 20, 30, 40]），包装成二维列表
+                            if isinstance(bbox_data[0], (int, float)):
+                                bbox_data = [bbox_data]
+
+                            step["tool_call"] = {
+                                "name": "search_bbox",
+                                "arguments": {"bbox": bbox_data}
+                            }
+
+                        except json.JSONDecodeError:
+                            print(f"[Warning] Failed to parse bbox JSON: {bbox_str}")
+                            step["answer"] = final_answer
+                    else:
+                        # 没有 bbox 且是最后一步 → 说明是最终答案
+                        step["answer"] = final_answer
 
                 reasoning_steps.append(step)
 
@@ -112,8 +132,74 @@ if __name__ == "__main__":
 
     rl_wrong_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data/eval/traj_multiturn_vstar_test_novllm/vigorl_qwen2_5_vl_7b_traj_vstar_multiturn_20251019_205621_vstar_test_maxturn5_20251020_130032/wrong_samples.jsonl"
     rl_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/output_reasoning_rl_wrong.json"
+    # convert_thoughts_to_reasoning_jsonl(
+    #     input_jsonl_path=rl_wrong_samples,
+    #     output_json_path=rl_wrong_reasoning_json,
+    #     crop_dir="images"
+    # )
+
+    # minio3_correct_v2_wrong_correct_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_ori_vs_v2_optimized/correct_in_1_wrong_in_2_1.jsonl"
+    # minio3_correct_v2_wrong_correct_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_correct_v2_wrong_correct.json"
+    # convert_thoughts_to_reasoning_jsonl(
+    #     minio3_correct_v2_wrong_correct_samples,
+    #     minio3_correct_v2_wrong_correct_reasoning_json,
+    #     crop_dir="images"
+    # )
+
+    # minio3_correct_v2_wrong_wrong_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_ori_vs_v2_optimized/correct_in_1_wrong_in_2_2.jsonl"
+    # minio3_correct_v2_wrong_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_correct_v2_wrong_wrong.json"
+    # convert_thoughts_to_reasoning_jsonl(
+    #     minio3_correct_v2_wrong_wrong_samples,
+    #     minio3_correct_v2_wrong_wrong_reasoning_json,
+    #     crop_dir="images"
+    # )
+
+    # minio3_wrong_v2_correct_correct_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_ori_vs_v2_optimized/wrong_in_1_correct_in_2_2.jsonl"
+    # minio3_wrong_v2_correct_correct_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_wrong_v2_correct_correct.json"
+    # convert_thoughts_to_reasoning_jsonl(
+    #     minio3_wrong_v2_correct_correct_samples,
+    #     minio3_wrong_v2_correct_correct_reasoning_json,
+    #     crop_dir="images"
+    # )
+
+    # minio3_wrong_v2_correct_wrong_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_ori_vs_v2_optimized/wrong_in_1_correct_in_2_1.jsonl"
+    # minio3_wrong_v2_correct_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_vs_v2/minio3_wrong_v2_correct_wrong.json"
+    # convert_thoughts_to_reasoning_jsonl(
+    #     minio3_wrong_v2_correct_wrong_samples,
+    #     minio3_wrong_v2_correct_wrong_reasoning_json,
+    #     crop_dir="images"
+    # )
+
+
+    # -------------比较chatgpt润色前后------------------------
+    v4_correct_v9_wrong_correct_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_v4_vs_v9/correct_in_1_wrong_in_2_1.jsonl"
+    v4_correct_v9_wrong_correct_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_correct_v2_wrong_correct.json"
     convert_thoughts_to_reasoning_jsonl(
-        input_jsonl_path=rl_wrong_samples,
-        output_json_path=rl_wrong_reasoning_json,
+        v4_correct_v9_wrong_correct_samples,
+        v4_correct_v9_wrong_correct_reasoning_json,
+        crop_dir="images"
+    )
+
+    v4_correct_v9_wrong_wrong_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_v4_vs_v9/correct_in_1_wrong_in_2_2.jsonl"
+    v4_correct_v9_wrong_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_correct_v2_wrong_wrong.json"
+    convert_thoughts_to_reasoning_jsonl(
+        v4_correct_v9_wrong_wrong_samples,
+        v4_correct_v9_wrong_wrong_reasoning_json,
+        crop_dir="images"
+    )
+
+    v4_wrong_v9_correct_correct_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_v4_vs_v9/wrong_in_1_correct_in_2_2.jsonl"
+    v4_wrong_v9_correct_correct_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_wrong_v2_correct_correct.json"
+    convert_thoughts_to_reasoning_jsonl(
+        v4_wrong_v9_correct_correct_samples,
+        v4_wrong_v9_correct_correct_reasoning_json,
+        crop_dir="images"
+    )
+
+    v4_wrong_v9_correct_wrong_samples = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/data_process/eval_processed/minio3_v4_vs_v9/wrong_in_1_correct_in_2_1.jsonl"
+    v4_wrong_v9_correct_wrong_reasoning_json = "/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/scripts/evaluation/minio3_v4_vs_v9/minio3_wrong_v2_correct_wrong.json"
+    convert_thoughts_to_reasoning_jsonl(
+        v4_wrong_v9_correct_wrong_samples,
+        v4_wrong_v9_correct_wrong_reasoning_json,
         crop_dir="images"
     )

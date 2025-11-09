@@ -40,7 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--hf_upload_path", default=False, type=str, help="The path of the huggingface repo to upload")
     args = parser.parse_args()
 
-    args.local_dir = '/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/rl/vigorl_qwen2_5_vl_7b_traj_vstar_multiturn_uniquebboxreward_vigorl_multiturn_traj__mrl32768_maxite6_lim10_cs512_os50_kl0.0_lr1.0e-6_wd1.0e-2_fvttrue_rbs32_gbs32_mgn0.2_wr0.05_20251022_000702/global_step_105/actor'
+    args.local_dir = '/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/rl/vigorl_qwen2_5_vl_7b_traj_minio3_multiturn_vigorl_multiturn_traj__mrl32768_maxite6_lim10_cs512_os50_kl0.0_lr1.0e-6_wd1.0e-2_fvttrue_rbs32_gbs32_mgn0.2_wr0.05_20251026_113732/global_step_45/actor'
 
     assert not args.local_dir.endswith("huggingface"), "The local_dir should not end with huggingface"
     local_dir = args.local_dir

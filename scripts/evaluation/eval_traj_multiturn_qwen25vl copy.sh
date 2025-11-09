@@ -2,7 +2,7 @@
 
 # VLLM number of GPUs
 NUM_GPUS=1 # number of GPUs to use for vllm
-NUM_PROCESSES=10 # number of processes to run in parallel
+NUM_PROCESSES=4 # number of processes to run in parallel
 SEED=42 # random seed
 N_ROLLOUTS=1 # number of rollouts to run per prompt
 TEMPERATURE=0.5 # temperature for the rollouts
@@ -51,9 +51,7 @@ elif [ "$eval_type" == "web_grounding" ]; then
 
 elif [ "$eval_type" == "traj_vstar" ]; then
 
-    # SYSTEM_PROMPT_WEB_GROUNDING="""You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>(x1, y1, x2, y2)</tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering."""
-    SYSTEM_PROMPT_WEB_GROUNDING="""You are a helpful assistant. Answer the user's question based on the image provided. Output your thinking process within the <think> and </think> tags. Whenever you find anything unclear, you can zoom in a specific region in the given image to see more clearly by outputing <grounding>{\"bbox_2d\": [x0, y0, x1, y1], \"source\": \"original_image\"}</grounding>, where bbox_2d is an array of four normalized coordinates [x0, y0, x1, y1] representing the bounding box (x0, y0 is top-left, x1, y1 is bottom-right, all values are in 0-1 range), and 'source' refers to the image that you zoom in and could be either 'original_image' or 'observation_i'. Once the final answer is confirmed, put it within <answer> and </answer>."""
-    
+    SYSTEM_PROMPT_WEB_GROUNDING="""You are a helpful assistant tasked with answering a question about an image. You should systematically examine different regions and phrases in the image by requesting to see specific bounding box regions:\n- At each turn, first reason about what you want to examine enclosed in <think> </think> tags.\n- Then request to see a specific region by outputting a search action formatted as:\n     <tool_call>(x1, y1, x2, y2)</tool_call>\n- After examining all relevant regions, provide your final answer enclosed in <answer> {final answer} </answer> tags.\n- Use the information from each region to build comprehensive understanding before answering."""
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-gqa-multiturn-sft-maxpixel12845056-maxlength32768-lr2e-6_1020"
     # MODEL_TAG="Qwen2.5-VL-7B-Instruct-gqa-multiturn-sft-maxpixel12845056-maxlength32768-lr2e-6_1020"
     # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/rl/vigorl_qwen2_5_vl_7b_traj_vstar_multiturn_uniquebboxreward_vigorl_multiturn_traj__mrl32768_maxite6_lim10_cs512_os50_kl0.0_lr1.0e-6_wd1.0e-2_fvttrue_rbs32_gbs32_mgn0.2_wr0.05_20251022_000702/global_step_225/actor/huggingface" # gsarch/ViGoRL-Multiturn-7b-Web-Grounding
@@ -64,18 +62,10 @@ elif [ "$eval_type" == "traj_vstar" ]; then
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-multiturn-all-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1030"
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-ori-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1031"
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v2-optimized-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1103"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v4-optimized-sft-maxpixel2000000-maxlength32768-lr1e-5-bs32-ep3_1104"
+    MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v4-optimized-sft-maxpixel2000000-maxlength32768-lr1e-5-bs32-ep3_1104"
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v9-optimized-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1105"
     # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-ori-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1106"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v11-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1106"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v11_v2-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1106"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_nopolish"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_7k"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-our_minio3_format_3k-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v4-optimized-sft-maxpixel1000000-maxlength32768-lr1e-5-bs32-ep3_1108"
-    MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b/full/our_minio3format_7k_absolute"
-    # MODEL="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/sft/qwen2_5vl-7b-full-our_minio3format_7k/full/our_minio3format_7k_absolute"
-    MODEL_TAG="sft-qwen2_5vl-7b-full-our_minio3format_7k_absolute"
+    MODEL_TAG="Qwen2.5-VL-7B-Instruct-minio3-v4-optimized-sft-maxpixel2000000-maxlength32768-lr1e-5-bs32-ep3_1104"
 
     CROP_SIZE=512 # 不起作用，py里直接用bbox大小
     CROP_OFFSET=0
@@ -91,7 +81,7 @@ elif [ "$eval_type" == "traj_vstar" ]; then
 
 fi
 #######################
-MAX_TURNS=5
+MAX_TURNS=11
 
 SAVE_TAG="${MODEL_TAG}_${SAVE_TAG}_maxturn${MAX_TURNS}"
 

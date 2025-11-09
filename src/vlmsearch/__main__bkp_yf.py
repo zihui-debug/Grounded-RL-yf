@@ -143,7 +143,7 @@ def process_samples(
     skipped_samples = []
     checkpoint_interval = getattr(args, "checkpoint_interval", 100)
     timeout_seconds = getattr(args, "timeout_seconds", 300)  # Default 5 minutes if not specified
-    # import ipdb;ipdb.set_trace()
+    import ipdb;ipdb.set_trace()
     # TQDM so we see local progress for this worker
     for idx, sample in enumerate(
         tqdm(samples, desc=f"Worker {worker_id} PID={os.getpid()}", position=worker_id, leave=True)

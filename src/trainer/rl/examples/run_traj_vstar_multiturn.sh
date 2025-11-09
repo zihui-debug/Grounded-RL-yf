@@ -12,7 +12,8 @@ domain="traj" # web_grounding, vstar, spatial, web_action
 condition="vigorl_multiturn" # vanilla_thinking, vigorl, vigorl_multiturn
 
 SAVE_PATH_BASE="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/checkpoints/rl"
-IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/gsarch/vigorl_datasets"
+# IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/gsarch/vigorl_datasets"
+IMAGE_ROOT="/home/zhaochaoyang/yangfan/dataset/ThinkwithImage"
 
 NUM_GPUS=8 # number of gpus on node
 NNODES=2
@@ -164,15 +165,19 @@ elif [ "$domain" == "traj" ]; then
 
     elif [ "$condition" == "vigorl_multiturn" ]; then
 
-        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-multiturn-sft-maxpixel12845056-maxlength32768-lr2e-6-ep10_1025" 
+        # MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-multiturn-all-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1028" 
+        # MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-multiturn-all-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1030"
+        # MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-ori-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1031"
+        MODEL_PATH="/home/zhaochaoyang/yangfan/project/Qwen2.5-VL-traj/checkpoints/trajvlm/Qwen2.5-VL-7B-Instruct-minio3-v2-optimized-sft-maxpixel1000000-maxlength32768-lr2e-6-ep5_1103"
         SYSTEM_PROMPT="" # replace with the prompt for your dataset
-        MODEL_TAG="vigorl_qwen2_5_vl_7b_traj_minio3_multiturn"
+        MODEL_TAG="vigorl_qwen2_5_vl_7b_traj_minio3_v2_optimized_sft_minio3_rl"
         REWARD_FUNCTION=./examples/reward_function/all_reward.py:compute_score
         MULTITURN=true
 
     fi
 
-    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_vstar_multiturn.txt"
+    train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_minio3_multiturn.txt"
+    # train_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_minio3_multiturn_chart.txt"
     val_file="/home/zhaochaoyang/yangfan/project/Grounded-RL-yf/src/trainer/rl/examples/input_data_val_vstar_multiturn.txt"
 
 fi
